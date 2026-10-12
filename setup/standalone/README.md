@@ -83,6 +83,13 @@ shortcut; a portable archive includes `install.cmd` and `launch.cmd`.
 On Linux, extract the archive, run `./install.sh`, and launch Strique from the
 application menu or `~/.local/bin/strique`.
 
+The Windows installer embeds the portable archive instead of recursively
+embedding individual runtime files, avoiding NSIS's compiler path-length limit.
+It uses its bundled Node runtime and Windows's built-in `tar` to verify and extract
+the archive, then installs the verified release. Windows 10/11 with built-in `tar`
+is required. Each Windows build also silently installs the actual `.exe` into an
+isolated test home and checks the installed Web interface and authenticated stop.
+
 Data locations:
 
 | Platform | Application state and user data |

@@ -12,6 +12,7 @@ import { spawn } from 'node:child_process';
 import { once } from 'node:events';
 import { fileURLToPath } from 'node:url';
 import https from 'node:https';
+import { windowsInstallerScript } from './windows-installer.mjs';
 
 function temporary(t) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'strique-test-'));
@@ -110,6 +111,44 @@ function controller(root, data, command) {
     env: { ...process.env, STRIQUE_DATA_DIR: data }, encoding: 'utf8', timeout: 30000 });
   assert.equal(result.status, 0, result.stderr); return result.stdout;
 }
+test('archive-based Windows installer preserves runtime files beyond MAX_PATH', t => {
+  const dir = temporary(t), data = path.join(dir, 'user-data');
+  const root = applicationFixture(dir, '1.0.0');
+  const deep = ['runtime', 'node_modules', '@deepseek-ai', 'dsh-experimental-inspector', 'lib', 'devtools', 'models', 'issues_manager', 'descriptions', 'selectElementAccessibilityInteractiveContentAttributesSelectDescendant.md'].join('/');
+  fs.mkdirSync(path.dirname(path.join(root, deep)), { recursive: true });
+  fs.writeFileSync(path.join(root, deep), 'long-path runtime asset');
+  fs.copyFileSync(process.execPath, path.join(root, 'bin/node.exe'));
+  fs.unlinkSync(path.join(root, 'inventory.json'));
+  fs.writeFileSync(path.join(root, 'inventory.json'), JSON.stringify(inventory(root)));
+  const expectedRoot = 'strique-1.0.0-win32-x64';
+  const parent = path.join(dir, 'package-source-with-a-long-directory-name');
+  fs.mkdirSync(parent);
+  const bundle = path.join(parent, expectedRoot);
+  fs.renameSync(root, bundle);
+  assert.ok(path.join(bundle, deep).length > 260);
+  const archive = path.join(dir, 'payload.tar.gz');
+  assert.equal(spawnSync('tar', ['-czf', archive, '-C', parent, expectedRoot]).status, 0);
+  const hash = createHash('sha256').update(fs.readFileSync(archive)).digest('hex');
+  const here = path.dirname(fileURLToPath(import.meta.url));
+  const env = { ...process.env, STRIQUE_DATA_DIR: data };
+  let installed;
+  if (process.platform === 'win32') {
+    const script = path.join(dir, 'installer.nsi');
+    fs.writeFileSync(script, windowsInstallerScript({ version: '1.0.0', bundle, archive, hash,
+      bootstrap: path.join(here, 'windows-bootstrap.mjs'), updates: path.join(here, 'updates.mjs') }));
+    const compiler = process.env.MAKENSIS || 'C:\\Program Files (x86)\\NSIS\\makensis.exe';
+    const compiled = spawnSync(compiler, [script], { encoding: 'utf8', timeout: 60000 });
+    assert.equal(compiled.status, 0, compiled.stdout + compiled.stderr);
+    installed = spawnSync(`${bundle}.exe`, ['/S'], { env, encoding: 'utf8', timeout: 60000 });
+  } else {
+    installed = spawnSync(process.execPath, [path.join(here, 'windows-bootstrap.mjs'), archive, expectedRoot, hash], {
+      env, encoding: 'utf8', timeout: 60000,
+    });
+  }
+  assert.equal(installed.status, 0, installed.stderr);
+  assert.equal(fs.readFileSync(path.join(data, 'releases/1.0.0', deep), 'utf8'), 'long-path runtime asset');
+  verifyInventory(path.join(data, 'releases/1.0.0'));
+});
 test('installation and rollback preserve user files and refuse a modified release', t => {
   const dir = temporary(t), data = path.join(dir, 'user-data');
   const first = applicationFixture(dir, '1.0.0'), next = applicationFixture(dir, '1.1.0');

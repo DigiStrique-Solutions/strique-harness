@@ -5,7 +5,7 @@ import { spawn, spawnSync } from 'node:child_process';
 import { once } from 'node:events';
 
 const root = path.resolve(process.argv[2]);
-const data = fs.mkdtempSync(path.join(os.tmpdir(), 'strique-installed-check-'));
+const data = process.argv[3] ? path.resolve(process.argv[3]) : fs.mkdtempSync(path.join(os.tmpdir(), 'strique-installed-check-'));
 const node = path.join(root, 'bin', process.platform === 'win32' ? 'node.exe' : 'node');
 const env = { ...process.env, STRIQUE_DATA_DIR: data,
   PATH: process.platform === 'win32' ? path.join(process.env.SystemRoot, 'System32') : '/usr/bin:/bin' };

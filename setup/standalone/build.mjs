@@ -3,8 +3,10 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
-import { createPublicKey } from 'node:crypto';
+import { createPublicKey, createHash } from 'node:crypto';
+import { pipeline } from 'node:stream/promises';
 import { assemblePackages, findPackage, inventory } from './package-tree.mjs';
+import { windowsInstallerScript } from './windows-installer.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const options = { root: path.resolve(here, '../..'), out: path.resolve(here, '../../Workspace-dsh/standalone'), version: '0.1.0', target: `${process.platform}-${process.arch}`, 'update-url': '', 'public-key': '' };
@@ -110,9 +112,12 @@ if (installer && process.platform === 'darwin') {
   run('/usr/bin/pkgbuild', ['--root', path.dirname(app), '--component-plist', components, '--identifier', 'com.strique.web', '--version', options.version, '--install-location', '/Applications', `${bundle}.pkg`], out);
 } else if (installer && process.platform === 'win32') {
   const script = path.join(out, `strique-${options.version}.nsi`);
-  const esc = p => p.replaceAll('$', '$$').replaceAll('"', '$\\"');
-  fs.writeFileSync(script, `Unicode true\nName "Strique"\nOutFile "${esc(`${bundle}.exe`)}"\nRequestExecutionLevel user\nSilentInstall normal\nSection\nSetShellVarContext current\nSetOutPath "$LOCALAPPDATA\\Strique\\releases\\${options.version}"\nFile /r "${esc(bundle)}\\*"\nExecWait '\"$OUTDIR\\bin\\node.exe\" \"$OUTDIR\\control.mjs\" install --already-installed' $0\nIntCmp $0 0 +3\nMessageBox MB_ICONSTOP "Strique installation failed."\nAbort\nCreateShortCut "$DESKTOP\\Strique.lnk" "$OUTDIR\\bin\\node.exe" '\"$OUTDIR\\control.mjs\" start'\nCreateShortCut "$SMPROGRAMS\\Strique.lnk" "$OUTDIR\\bin\\node.exe" '\"$OUTDIR\\control.mjs\" start'\nSectionEnd\n`);
+  const hash = createHash('sha256');
+  await pipeline(fs.createReadStream(archive), hash);
+  fs.writeFileSync(script, windowsInstallerScript({ version: options.version, bundle, archive,
+    hash: hash.digest('hex'), bootstrap: path.join(here, 'windows-bootstrap.mjs'), updates: path.join(here, 'updates.mjs') }));
   const nsis = process.env.MAKENSIS || 'C:\\Program Files (x86)\\NSIS\\makensis.exe';
   run(nsis, [script], out);
+  run(node, [path.join(here, 'verify-windows-installer.mjs'), `${bundle}.exe`, bundle], out);
 }
 console.log(`Complete: ${bundle}\nPortable archive: ${archive}\n${installer && process.platform !== 'linux' ? 'Native installer created (unsigned until release signing is configured).' : 'Linux/portable installation: extract archive and run install.sh.'}`);
