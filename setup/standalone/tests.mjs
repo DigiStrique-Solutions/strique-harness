@@ -166,6 +166,26 @@ test('installation and rollback preserve user files and refuse a modified releas
   assert.equal(JSON.parse(controller(first, data, 'status')).current, '1.0.0');
   assert.throws(() => verifyInventory(next), /verification failed/);
 });
+test('installed verifier leaves caller-owned files for cleanup after its executable exits', { skip: process.env.STRIQUE_TEST_NETWORK !== '1' }, t => {
+  const dir = temporary(t), data = path.join(dir, 'installed-data');
+  const root = applicationFixture(dir, '1.0.0');
+  fs.writeFileSync(path.join(root, 'runtime/node_modules/@deepseek-ai/dsh/lib/bin.js'), `
+    const http = require('node:http');
+    const server = http.createServer((_req, res) => { res.end('<title>Strique</title>'); });
+    server.listen(0, '127.0.0.1', () => console.log('dsh web: http://127.0.0.1:' + server.address().port));
+  `);
+  fs.unlinkSync(path.join(root, 'inventory.json'));
+  fs.writeFileSync(path.join(root, 'inventory.json'), JSON.stringify(inventory(root)));
+  controller(root, data, 'install');
+  const installed = path.join(data, 'releases/1.0.0');
+  const node = path.join(installed, 'bin', process.platform === 'win32' ? 'node.exe' : 'node');
+  const result = spawnSync(node, [fileURLToPath(new URL('./verify-installed.mjs', import.meta.url)), installed, data], {
+    encoding: 'utf8', timeout: 30000,
+  });
+  assert.equal(result.status, 0, result.stderr);
+  assert.ok(fs.existsSync(node), 'Verifier must not delete its own executable or caller-owned release');
+  verifyInventory(installed);
+});
 test('launcher starts without system Node on PATH and authenticates stop requests', { skip: process.env.STRIQUE_TEST_NETWORK !== '1' }, async t => {
   const dir = temporary(t), data = path.join(dir, 'user-data'), root = applicationFixture(dir, '1.0.0');
   controller(root, data, 'install');

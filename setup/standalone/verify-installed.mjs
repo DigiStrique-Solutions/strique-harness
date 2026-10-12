@@ -5,7 +5,8 @@ import { spawn, spawnSync } from 'node:child_process';
 import { once } from 'node:events';
 
 const root = path.resolve(process.argv[2]);
-const data = process.argv[3] ? path.resolve(process.argv[3]) : fs.mkdtempSync(path.join(os.tmpdir(), 'strique-installed-check-'));
+const ownsData = !process.argv[3];
+const data = ownsData ? fs.mkdtempSync(path.join(os.tmpdir(), 'strique-installed-check-')) : path.resolve(process.argv[3]);
 const node = path.join(root, 'bin', process.platform === 'win32' ? 'node.exe' : 'node');
 const env = { ...process.env, STRIQUE_DATA_DIR: data,
   PATH: process.platform === 'win32' ? path.join(process.env.SystemRoot, 'System32') : '/usr/bin:/bin' };
@@ -42,5 +43,7 @@ try {
   console.log('Real installation, private home, browser response, and authenticated shutdown passed with system Node/npm absent from PATH.');
 } finally {
   if (child.exitCode === null && child.signalCode === null) { child.kill('SIGTERM'); await exit; }
-  fs.rmSync(data, { recursive: true, force: true });
+  // The native installer verifier owns supplied homes and removes them after
+  // this process exits. Windows cannot delete the Node executable running here.
+  if (ownsData) fs.rmSync(data, { recursive: true, force: true });
 }

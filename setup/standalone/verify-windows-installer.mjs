@@ -28,5 +28,5 @@ try {
   assert.equal(checked.status, 0, 'Installed Windows application smoke failed');
   console.log('Actual Windows .exe installation, long-path extraction, inventory, and installed Web smoke passed.');
 } finally {
-  fs.rmSync(temporary, { recursive: true, force: true });
+  fs.rmSync(temporary, { recursive: true, force: true, maxRetries: 5, retryDelay: 500 });
 }
