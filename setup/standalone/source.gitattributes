@@ -1,0 +1,4 @@
+# Consistent source checkouts on Windows, macOS and Linux.
+* text=auto eol=lf
+# Preserve the exact bytes used by artwork integrity checks.
+*.svg -text

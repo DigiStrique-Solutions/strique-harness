@@ -31,7 +31,7 @@
   ],
   "scripts": {
     "build": "tsdown && tsc -p tsconfig.build.json && pnpm run bundle:verify",
-    "bundle:verify": "node scripts/verify-package.mjs",
+    "bundle:verify": "node scripts/verify-package.mjs && node --test scripts/verify-package.test.mjs",
     "typecheck": "tsc --noEmit",
     "lint": "oxlint src tests scripts tsdown.config.ts vitest.config.ts",
     "test": "vitest run",

@@ -58,7 +58,7 @@ for (const peer of [
 ]) {
   assert(manifest.peerDependenciesMeta?.[peer]?.optional === true, `${peer} must remain an optional peer`)
 }
-assert(patch === expectedPatch, 'bundle patch must contain the stable branding and persona rows')
+assert(patch.replace(/\r\n/g, '\n') === expectedPatch, 'bundle patch must contain the stable branding and persona rows')
 assert(!provenance.includes('/Users/'), 'asset provenance must not disclose a machine-local home path')
 assert(createHash('sha256').update(favicon).digest('hex') === '34d90b60ab0146c62fbb9339a17e64d063c31480321d03cc204352077924571c', 'favicon artwork differs from the selected Strique source asset')
 
@@ -93,7 +93,7 @@ assert(JSON.stringify(persona.inject) === JSON.stringify(['systemPrompt']), 'Per
 assert(files.includes('persona.d.ts'), 'Persona declaration entry is missing')
 assert(manifest.exports?.['./persona']?.default === './lib/persona.js', './persona export is incorrect')
 assert(manifest.files.includes('prompts/**'), 'Persona prompt asset is not packaged')
-assert((await readFile(new URL('prompts/strique.md', root), 'utf8')).startsWith('# Strique\n'), 'Persona asset is missing')
+assert((await readFile(new URL('prompts/strique.md', root), 'utf8')).replace(/\r\n/g, '\n').startsWith('# Strique\n'), 'Persona asset is missing')
 
 const gzipBytes = gzipSync(bundle).byteLength
 assert(bundleStats.size <= 30_000, `Client bundle is ${bundleStats.size} bytes, over the 30 KB limit`)

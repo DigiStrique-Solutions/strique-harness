@@ -48,6 +48,8 @@ for (const { file, destination, mode } of copies) {
   fs.chmodSync(destination, mode);
 }
 fs.cpSync(here, path.join(output, 'setup'), { recursive: true });
+const attributes = path.join(here, 'standalone/source.gitattributes');
+if (fs.existsSync(attributes)) fs.copyFileSync(attributes, path.join(output, '.gitattributes'));
 for (const name of ['platform-release.yml', 'windows-release.yml']) {
   const workflow = path.join(here, 'standalone', name);
   if (!fs.existsSync(workflow)) continue;
