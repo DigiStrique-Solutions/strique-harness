@@ -89,6 +89,10 @@ It uses its bundled Node runtime and Windows's built-in `tar` to verify and extr
 the archive, then installs the verified release. Windows 10/11 with built-in `tar`
 is required. Each Windows build also silently installs the actual `.exe` into an
 isolated test home and checks the installed Web interface and authenticated stop.
+The silent installation test allows 20 minutes on the build runner and reports
+elapsed time and the current installation stage every 30 seconds. A timeout stops
+the installer process tree and includes the recorded stages in the failure log;
+inventory, Web startup, and shutdown checks still have to pass.
 
 Data locations:
 

@@ -5,17 +5,19 @@ import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { verifyInventory } from './updates.mjs';
+import { runInstaller } from './installer-process.mjs';
 
 if (process.platform !== 'win32') throw new Error('Verify the Windows installer on Windows');
 const [installer, bundle] = process.argv.slice(2).map(value => path.resolve(value));
 const temporary = fs.mkdtempSync(path.join(os.tmpdir(), 'strique-exe-check-'));
 // Exercise extraction beyond MAX_PATH, including long user-profile directory names.
 const data = path.join(temporary, 'user-profile-with-a-long-directory-name', 'Strique');
-const env = { ...process.env, STRIQUE_DATA_DIR: data, PATH: path.join(process.env.SystemRoot, 'System32'), NODE_OPTIONS: '', NODE_PATH: '' };
+const progressFile = path.join(temporary, 'installer-progress.jsonl');
+const env = { ...process.env, STRIQUE_DATA_DIR: data, STRIQUE_INSTALL_LOG: progressFile,
+  PATH: path.join(process.env.SystemRoot, 'System32'), NODE_OPTIONS: '', NODE_PATH: '' };
 try {
-  const installed = spawnSync(installer, ['/S'], { env, encoding: 'utf8', timeout: 300000 });
-  if (installed.error) throw installed.error;
-  assert.equal(installed.status, 0, `Installer failed: ${installed.stderr}`);
+  console.log('Starting silent Windows installation test (20-minute limit).');
+  await runInstaller(installer, ['/S'], { env, progressFile });
   const state = JSON.parse(fs.readFileSync(path.join(data, 'installation.json')));
   const root = path.join(data, 'releases', state.current);
   verifyInventory(root);

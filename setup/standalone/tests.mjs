@@ -13,6 +13,7 @@ import { once } from 'node:events';
 import { fileURLToPath } from 'node:url';
 import https from 'node:https';
 import { windowsInstallerScript } from './windows-installer.mjs';
+import './installer-process.test.mjs';
 
 function temporary(t) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'strique-test-'));
