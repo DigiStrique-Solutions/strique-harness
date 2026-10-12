@@ -12,6 +12,7 @@ import { spawn } from 'node:child_process';
 import { once } from 'node:events';
 import { fileURLToPath } from 'node:url';
 import https from 'node:https';
+import http from 'node:http';
 import { windowsInstallerScript } from './windows-installer.mjs';
 import './installer-process.test.mjs';
 
@@ -207,6 +208,53 @@ test('launcher starts without system Node on PATH and authenticates stop request
   try { await Promise.race([stopped, new Promise((resolve, reject) => { timeout = setTimeout(() => reject(new Error('Launcher did not stop')), 10000); })]); }
   finally { clearTimeout(timeout); }
   assert.equal(JSON.parse(controller(root, data, 'status')).running, false);
+});
+
+test('default launch avoids an occupied port without stopping its owner and preserves explicit port choices', { skip: process.env.STRIQUE_TEST_NETWORK !== '1' }, async t => {
+  const blocker = http.createServer((_req, res) => res.end('other application'));
+  await new Promise(resolve => blocker.listen(0, '127.0.0.1', resolve));
+  t.after(() => { blocker.closeAllConnections(); blocker.close(); });
+  const occupied = blocker.address().port;
+  const dir = temporary(t), data = path.join(dir, 'data'), root = applicationFixture(dir, '1.0.0');
+  fs.writeFileSync(path.join(root, 'runtime/node_modules/@deepseek-ai/dsh/lib/bin.js'), `
+    const server = require('node:http').createServer((_req, res) => res.end('Strique'));
+    const index = process.argv.indexOf('--port');
+    const port = index < 0 ? ${occupied} : Number(process.argv[index + 1]);
+    server.on('error', error => { console.error(error.code); process.exit(1); });
+    server.listen(port, '127.0.0.1', () => console.log('dsh web: http://127.0.0.1:' + server.address().port));
+  `);
+  fs.unlinkSync(path.join(root, 'inventory.json'));
+  fs.writeFileSync(path.join(root, 'inventory.json'), JSON.stringify(inventory(root)));
+  controller(root, data, 'install');
+  const child = spawn(process.execPath, [path.join(root, 'control.mjs'), 'start', '--no-open'], {
+    env: { ...process.env, STRIQUE_DATA_DIR: data }, stdio: 'ignore',
+  });
+  const exited = once(child, 'exit');
+  try {
+    let owner;
+    for (let count = 0; count < 100; count++) {
+      if (child.exitCode !== null) break;
+      const record = path.join(data, 'running/owner.json');
+      if (fs.existsSync(record)) owner = JSON.parse(fs.readFileSync(record));
+      if (owner?.url) break;
+      await new Promise(resolve => setTimeout(resolve, 50));
+    }
+    assert.ok(owner?.url, 'Default launcher must select a free port when the original default is occupied');
+    assert.notEqual(Number(new URL(owner.url).port), occupied);
+    assert.equal(await (await fetch(owner.url)).text(), 'Strique');
+    assert.equal(await (await fetch(`http://127.0.0.1:${occupied}`)).text(), 'other application');
+    controller(root, data, 'stop');
+    await exited;
+    const explicit = spawnSync(process.execPath, [path.join(root, 'control.mjs'), 'start', '--no-open', '--port', String(occupied)], {
+      env: { ...process.env, STRIQUE_DATA_DIR: data }, encoding: 'utf8', timeout: 10000,
+    });
+    assert.equal(explicit.error, undefined);
+    assert.notEqual(explicit.status, 0, 'An explicitly requested occupied port must not be silently replaced');
+    assert.match(fs.readFileSync(path.join(data, 'logs/web.log'), 'utf8'), /EADDRINUSE/);
+    assert.equal(await (await fetch(`http://127.0.0.1:${occupied}`)).text(), 'other application');
+  } finally {
+    if (child.exitCode === null && child.signalCode === null) { child.kill('SIGTERM'); await exited; }
+  }
 });
 
 test('signed HTTPS update stages a release, preserves user data, and rejects tampered metadata', { skip: process.env.STRIQUE_TEST_NETWORK !== '1' }, async t => {

@@ -3,6 +3,7 @@ import path from 'node:path';
 import os from 'node:os';
 import { spawn, spawnSync } from 'node:child_process';
 import { once } from 'node:events';
+import net from 'node:net';
 
 const root = path.resolve(process.argv[2]);
 const ownsData = !process.argv[3];
@@ -10,7 +11,13 @@ const data = ownsData ? fs.mkdtempSync(path.join(os.tmpdir(), 'strique-installed
 const node = path.join(root, 'bin', process.platform === 'win32' ? 'node.exe' : 'node');
 const env = { ...process.env, STRIQUE_DATA_DIR: data,
   PATH: process.platform === 'win32' ? path.join(process.env.SystemRoot, 'System32') : '/usr/bin:/bin' };
-const child = spawn(node, [path.join(root, 'control.mjs'), 'start', '--no-open', '--port', '0'], { env, stdio: ['ignore', 'pipe', 'pipe'] });
+// Check the same default launch as the shortcut, with the old default occupied.
+const blocker = net.createServer(socket => socket.end());
+await new Promise((resolve, reject) => {
+  blocker.once('error', error => error.code === 'EADDRINUSE' ? resolve() : reject(error));
+  blocker.listen(3080, '127.0.0.1', resolve);
+});
+const child = spawn(node, [path.join(root, 'control.mjs'), 'start', '--no-open'], { env, stdio: ['ignore', 'pipe', 'pipe'] });
 let stderr = '';
 child.stderr.on('data', chunk => { stderr += chunk; });
 child.stdout.on('data', () => {});
@@ -27,6 +34,7 @@ try {
     await new Promise(resolve => setTimeout(resolve, 200));
   }
   if (!owner?.url) throw new Error(`Installed application did not become ready: ${stderr}`);
+  if (new URL(owner.url).port === '3080') throw new Error('Default launch attempted to use the occupied port');
   let response = await fetch(owner.url, { redirect: 'manual' });
   const cookie = response.headers.getSetCookie().map(value => value.split(';')[0]).join('; ');
   if (response.status === 302 || response.status === 303) {
@@ -43,6 +51,7 @@ try {
   console.log('Real installation, private home, browser response, and authenticated shutdown passed with system Node/npm absent from PATH.');
 } finally {
   if (child.exitCode === null && child.signalCode === null) { child.kill('SIGTERM'); await exit; }
+  if (blocker.listening) blocker.close();
   // The native installer verifier owns supplied homes and removes them after
   // this process exits. Windows cannot delete the Node executable running here.
   if (ownsData) fs.rmSync(data, { recursive: true, force: true });

@@ -29,6 +29,7 @@ StrCmp $1 "" 0 finished
 SetOutPath "$LOCALAPPDATA\\Strique\\releases\\${version}"
 CreateShortCut "$DESKTOP\\Strique.lnk" "$OUTDIR\\bin\\node.exe" '"$OUTDIR\\control.mjs" start'
 CreateShortCut "$SMPROGRAMS\\Strique.lnk" "$OUTDIR\\bin\\node.exe" '"$OUTDIR\\control.mjs" start'
+CreateShortCut "$SMPROGRAMS\\Stop Strique.lnk" "$OUTDIR\\bin\\node.exe" '"$OUTDIR\\control.mjs" stop'
 finished:
 SetErrorLevel 0
 SectionEnd

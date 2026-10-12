@@ -143,7 +143,9 @@ async function start() {
   const cli = path.join(root, 'runtime/node_modules/@deepseek-ai/dsh/lib/bin.js');
   fs.mkdirSync(path.join(data, 'logs'), { recursive: true });
   const log = fs.openSync(path.join(data, 'logs/web.log'), 'a', 0o600);
-  const child = spawn(path.join(root, 'bin', nodeName), [cli, 'web', '--host', '127.0.0.1', ...argv], {
+  const webArgs = [...argv];
+  if (!webArgs.some(arg => arg === '--port' || arg.startsWith('--port='))) webArgs.push('--port', '0');
+  const child = spawn(path.join(root, 'bin', nodeName), [cli, 'web', '--host', '127.0.0.1', ...webArgs], {
     cwd: os.homedir(), env: runtimeEnv(), stdio: ['ignore', 'pipe', 'pipe'] });
   const token = randomBytes(32).toString('hex');
   const control = net.createServer(socket => {

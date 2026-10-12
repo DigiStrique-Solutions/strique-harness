@@ -83,6 +83,16 @@ shortcut; a portable archive includes `install.cmd` and `launch.cmd`.
 On Linux, extract the archive, run `./install.sh`, and launch Strique from the
 application menu or `~/.local/bin/strique`.
 
+The launcher asks the operating system for a free loopback port by default.
+It opens the resulting address in the browser and reopens that address on later
+launches while Strique is running. This avoids conflicts with another application
+on port 3080. For an intentional fixed port, pass `start --port 8080`.
+It never terminates an unrelated process to free a port. Use `stop` to shut down
+the current Strique server through its authenticated control endpoint.
+Windows installations also add a **Stop Strique** Start-menu shortcut. Closing
+the browser alone leaves the local server running; clicking Strique again reopens
+that existing server instead of launching another instance.
+
 The Windows installer embeds the portable archive instead of recursively
 embedding individual runtime files, avoiding NSIS's compiler path-length limit.
 It uses its bundled Node runtime and Windows's built-in `tar` to verify and extract
