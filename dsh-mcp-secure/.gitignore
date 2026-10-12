@@ -1,0 +1,14 @@
+node_modules/
+*.log
+.DS_Store
+.dsh/
+artifacts/
+
+# Local credentials and generated release/browser artifacts
+.env
+.env.*
+!.env.example
+*.tgz
+.auth/
+playwright-report/
+test-results/

@@ -1,0 +1,67 @@
+name: Build Strique installers
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Product version, for example 0.1.0
+        required: true
+        type: string
+      update_base_url:
+        description: Optional HTTPS distribution base; leave empty before hosting is configured
+        required: false
+        type: string
+permissions:
+  contents: read
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: windows-2025
+            target: win32-x64
+          - runner: macos-15
+            target: darwin-arm64
+          - runner: macos-15-intel
+            target: darwin-x64
+          - runner: ubuntu-24.04
+            target: linux-x64
+          - runner: ubuntu-24.04-arm
+            target: linux-arm64
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 90
+    env:
+      RELEASE_VERSION: ${{ inputs.version }}
+      UPDATE_BASE_URL: ${{ inputs.update_base_url }}
+      UPDATE_PUBLIC_KEY: ${{ vars.STRIQUE_UPDATE_PUBLIC_KEY }}
+      DSH_TELEMETRY_DISABLED: '1'
+      STRIQUE_TEST_NETWORK: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Install Linux native build tools
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y build-essential musl-tools
+      - name: Install Windows installer compiler
+        if: runner.os == 'Windows'
+        run: choco install nsis -y --no-progress
+      - name: Prepare and build pinned source dependencies
+        env:
+          STRIQUE_BUILD_HOME: ${{ runner.temp }}/strique-build-home
+        run: node setup/setup.mjs --mode source --home "${{ runner.temp }}/strique-build-home"
+      - name: Test packaging and update verification
+        run: node --test setup/standalone/tests.mjs
+      - name: Build and smoke platform package
+        run: node setup/standalone/ci-build.mjs
+      - name: Retain installers and portable update archive
+        uses: actions/upload-artifact@v4
+        with:
+          name: strique-${{ matrix.target }}
+          path: |
+            standalone-output/*.exe
+            standalone-output/*.pkg
+            standalone-output/*.tar.gz
+          if-no-files-found: error
+          retention-days: 30

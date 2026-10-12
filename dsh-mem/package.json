@@ -1,0 +1,36 @@
+{
+  "name": "@local/dsh-mem",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Persistent agent memory for the dsh harness: tools, standing context, self-captured lessons, and a Web UI panel",
+  "scripts": {
+    "test": "node --test"
+  },
+  "icon": "./icon.svg",
+  "exports": {
+    ".": "./index.js",
+    "./client": "./client.js",
+    "./package.json": "./package.json",
+    "./locale/*.json": "./locale/*.json"
+  },
+  "files": [
+    "cordis.patch.yml",
+    "index.js",
+    "client.js",
+    "icon.svg",
+    "locale/*.json"
+  ],
+  "dsh": {
+    "bundle": { "patch": "./cordis.patch.yml" },
+    "client": {
+      "platform": "web",
+      "immediately": true,
+      "inject": [
+        "@deepseek-ai/dsh-client-locale",
+        "@deepseek-ai/dsh-client-ui-layout",
+        "@deepseek-ai/dsh-client-ui-sidebar"
+      ]
+    }
+  }
+}

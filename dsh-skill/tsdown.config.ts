@@ -1,0 +1,50 @@
+import { defineConfig } from 'tsdown'
+
+const packageName = 'dsh-skills-manager-secure'
+
+export default defineConfig([
+  {
+    name: packageName,
+    entry: { index: 'lib/types/index.js', access: 'lib/types/access-service.js', runtime: 'lib/types/runtime.js' },
+    outDir: 'lib',
+    format: 'esm',
+    platform: 'node',
+    target: 'es2022',
+    fixedExtension: false,
+    dts: false,
+    clean: false,
+    external: [
+      '@deepseek-ai/cordis',
+      '@deepseek-ai/dsh-home-paths',
+      '@deepseek-ai/dsh-skill',
+      '@deepseek-ai/dsh-tools',
+      '@deepseek-ai/dsh-llm',
+      '@deepseek-ai/dsh-session',
+      '@deepseek-ai/dsh-scope',
+      '@deepseek-ai/dsh-skill-filesystem',
+      '@deepseek-ai/schemastery',
+      'yaml',
+    ],
+  },
+  {
+    name: `${packageName}/client`,
+    entry: { client: 'lib/types/client/index.js' },
+    outDir: 'lib',
+    format: 'cjs',
+    platform: 'browser',
+    target: 'es2022',
+    fixedExtension: false,
+    dts: false,
+    sourcemap: true,
+    clean: false,
+    external: ['react', '@deepseek-ai/dsh-client-ui-primitives'],
+    // The primitives package ships from the shell's frozen module table (PLATFORM_MODULES).
+    noExternal: (id: string) => id === 'react' || id === '@deepseek-ai/dsh-client-ui-primitives' ? undefined : true,
+    outputOptions: {
+      entryFileNames: 'client.js',
+      banner: `window.__ModuleLoader__.load({ id: ${JSON.stringify(packageName)}, factory: (require) => {`,
+      footer: 'return module.exports; } });',
+      intro: 'var module = { exports: {} }; var exports = module.exports;',
+    },
+  },
+])

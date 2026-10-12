@@ -1,0 +1,5 @@
+- insert:
+    - id: strique-branding
+      name: "@strique/dsh-branding"
+    - id: strique-persona
+      name: "@strique/dsh-branding/persona"

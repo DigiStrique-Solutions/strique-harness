@@ -1,0 +1,78 @@
+{
+  "name": "dsh-notify",
+  "version": "0.1.4",
+  "description": "Browser notifications and distinct chimes for Harness completion, questions, plan review, and approvals.",
+  "type": "module",
+  "main": "lib/index.js",
+  "exports": {
+    ".": {
+      "default": "./lib/index.js"
+    },
+    "./client": {
+      "default": "./lib/client.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web",
+      "inject": [
+        "@deepseek-ai/dsh-api-remotes",
+        "@deepseek-ai/dsh-client-locale",
+        "@deepseek-ai/dsh-client-ui-renderer",
+        "@deepseek-ai/dsh-client-ui-settings",
+        "@deepseek-ai/dsh-client-ui-session",
+        "@deepseek-ai/dsh-api-session-controller"
+      ]
+    }
+  },
+  "peerDependencies": {
+    "@deepseek-ai/cordis": "4.0.5-alpha.1",
+    "@deepseek-ai/dsh-settings": "0.2.1-alpha.1",
+    "@deepseek-ai/schemastery": "3.18.5-alpha.1"
+  },
+  "license": "MIT",
+  "private": true,
+  "files": [
+    "lib/*.js",
+    "cordis.patch.yml",
+    "README.md",
+    "LICENSE",
+    "CHANGELOG.md"
+  ],
+  "scripts": {
+    "check": "node --check lib/index.js && node --check lib/client.js && node --test test/*.test.mjs",
+    "test": "node --test test/*.test.mjs",
+    "pack:local": "npm pack --ignore-scripts"
+  },
+  "engines": {
+    "node": "^22.19.0 || >=24.0.0"
+  },
+  "devDependencies": {
+    "@deepseek-ai/cordis": "4.0.5-alpha.1",
+    "@deepseek-ai/cordis-plugin-group": "1.0.5-alpha.1",
+    "@deepseek-ai/cordis-plugin-include": "1.0.10-alpha.1",
+    "@deepseek-ai/dsh-settings": "0.2.1-alpha.1",
+    "@deepseek-ai/schemastery": "3.18.5-alpha.1",
+    "@playwright/test": "1.59.1",
+    "@deepseek-ai/dsh-app-boot": "0.2.1-alpha.1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/DigiStrique-Solutions/dsh-notify.git"
+  },
+  "homepage": "https://github.com/DigiStrique-Solutions/dsh-notify#readme",
+  "bugs": {
+    "url": "https://github.com/DigiStrique-Solutions/dsh-notify/issues"
+  },
+  "keywords": [
+    "deepseek-harness",
+    "dsh-plugin",
+    "notifications",
+    "human-in-the-loop"
+  ],
+  "packageManager": "pnpm@10.33.0"
+}

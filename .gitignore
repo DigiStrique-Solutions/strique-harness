@@ -1,0 +1,10 @@
+node_modules/
+standalone-output/
+Workspace-dsh/
+.env
+.env.*
+.npmrc
+.dsh/
+.aws/
+*.pem
+*.key

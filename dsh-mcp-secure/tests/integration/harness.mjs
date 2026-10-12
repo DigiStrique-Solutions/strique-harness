@@ -1,0 +1,198 @@
+// Run with the pinned Harness tsx runtime and TSX_TSCONFIG_PATH; see docs/verification.md.
+import assert from 'node:assert/strict';
+import { mkdtempSync, rmSync, existsSync, mkdirSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join, resolve } from 'node:path';
+import { pathToFileURL } from 'node:url';
+import * as manager from '../../lib/index.js';
+import { fixtureServer, until } from '../helpers.mjs';
+const harness = resolve(process.env.HARNESS_PATH || '../deepseek-harness');
+const mod = path => import(pathToFileURL(join(harness, path)).href);
+const { Context, FiberState } = await mod('vendor/cordis/src/index.ts');
+const { default: SystemPrompt } = await mod('packages/core/system-prompt/src/index.ts');
+const { default: ApprovalService, setApprovalPolicy } = await mod('packages/interaction/user-approval/src/index.ts');
+const { default: ToolRuntime } = await mod('packages/core/tools/src/index.ts');
+const { BrowserAuth } = await mod('packages/client/connection/src/browser-auth.ts');
+const { HostConnectionService } = await mod('packages/client/connection/src/rpc-host.ts');
+const { default: AgentRegistry } = await mod('packages/core/agent/src/index.ts');
+const { createScope } = await mod('packages/core/scope/src/index.ts');
+const { RecordCredentials } = await mod('packages/client/connection/tests/browser-credentials.ts');
+const dir = mkdtempSync(join(tmpdir(), 'secure-mcp-cordis-'));
+let fixtureDescription = 'Fixture', fixtureProperties = {};
+const fixture = await fixtureServer((_req, res, body) => {
+  if (body.method !== 'tools/list') return;
+  res.writeHead(200, { 'content-type': 'application/json' });
+  res.end(JSON.stringify({ jsonrpc: '2.0', id: body.id, result: { tools: [{ name: 'inspect', description: fixtureDescription, inputSchema: { type: 'object', properties: fixtureProperties } }] } })); return true;
+});
+const ctx = new Context(); ctx.baseUrl = pathToFileURL(dir + '/').href;
+const routes = [];
+ctx.logger.exporter({ levels: { default: 3 }, export(message) { if (message.type === 'warn' || message.type === 'error') console.error(...message.args); } });
+await ctx.plugin(SystemPrompt); await ctx.plugin(ToolRuntime); await ctx.plugin(ApprovalService);
+const plugin = ctx.plugin(manager, { stateDir: dir, requestTimeoutMs: 1500, reconnectMaxAttempts: 0, approvalTimeoutMs: 300 });
+assert.equal(plugin.state, FiberState.PENDING);
+await ctx.plugin(AgentRegistry);
+const agents = ctx.agents;
+const createBefore = Object.getOwnPropertyDescriptor(agents, 'create');
+async function makeAgent(owner, options) {
+  const events = [{ type: 'turn/start', data: {} }];
+  const agent = { id: options.sessionId || options.resumeSessionId, session: { id: options.sessionId || options.resumeSessionId, header: { cwd: options.cwd }, get seq() { return events.length; }, eventAt(seq) { return events[seq]; }, append(type, data) { events.push({ type, data }); }, events } };
+  let scope; const ownerFiber = owner.plugin({ name: 'fixture-agent-owner', inject: ['tools', 'systemPrompt'], apply(inner) { scope = createScope(inner, agent); } }); await ownerFiber; agent.ctx = scope.ctx;
+  assert.ok(scope.ctx.tools, 'fixture scope must inject tools');
+  await options.setup?.(scope.ctx, agent);
+  const unregister = ctx.agents.register(agent);
+  return { agent, async dispose() { unregister(); await scope.dispose(); await ownerFiber.dispose(); } };
+}
+await ctx.plugin({ name: 'fixture-agent-factory', inject: ['agents', 'tools', 'systemPrompt'], apply(factoryCtx) { factoryCtx.agents.setFactory({ createAgent(_owner, options) { return makeAgent(factoryCtx, options); }, resume(_owner, options) { return makeAgent(factoryCtx, options); } }); } });
+ctx.provide('webServer', { register(route) { routes.push(route); return () => routes.splice(routes.indexOf(route), 1); } });
+const auth = await BrowserAuth.create({}, new RecordCredentials(), 1);
+const provider = () => ctx.plugin({ name: 'fixture-connection', apply(c) { new HostConnectionService(c, [], auth); } });
+let connection = provider(); await connection; await plugin;
+assert.equal(plugin.state, FiberState.ACTIVE); assert.equal(routes.length, 1);
+const launch = new URL(auth.authenticatedUrl('http://127.0.0.1:3198'));
+let cookie;
+auth.authorizeIndex({ method: 'GET', url: launch.pathname + launch.search, headers: { host: launch.host } }, { writeHead(_code, headers) { cookie = headers['set-cookie'].split(';')[0]; }, end() {} });
+async function request(method, path, body, extra = {}) {
+  const req = { method, url: '/mcp-manager/api' + path, headers: { host: launch.host, origin: launch.origin, cookie, 'content-type': 'application/json', ...extra }, async *[Symbol.asyncIterator]() { if (body) yield Buffer.from(JSON.stringify(body)); } };
+  const res = { status: 0, body: '', writeHead(code) { this.status = code; }, end(body = '') { this.body += body; } };
+  await routes[0].handler(req, res); return res;
+}
+try {
+  assert.equal((await request('GET', '/servers', undefined, { cookie: '' })).status, 401);
+  assert.equal((await request('POST', '/servers', {}, { origin: 'https://evil.example' })).status, 403);
+  assert.equal((await request('GET', '/servers', undefined, { host: 'evil.example' })).status, 403);
+  const added = await request('POST', '/servers', { name: 'real', url: fixture.url, authMode: 'static' }); assert.equal(added.status, 201, added.body);
+  await until(() => ctx.tools.schemas().some(tool => tool.name === 'mcp__real__inspect'));
+  const serverId = JSON.parse(added.body).server.id;
+  const permission = JSON.parse((await request('GET', `/permissions/${serverId}`)).body);
+  assert.equal((await request('PUT', `/permissions/${serverId}`, { changes: permission.tools.map(t => ({ ...t, mode: 'allow' })) })).status, 200);
+  const result = await ctx.tools.execute({ signal: new AbortController().signal, callId: 'real-call', name: 'mcp__real__inspect', arguments: {} });
+  assert.equal(result.isError, false, JSON.stringify(result)); assert.deepEqual(result.value.structuredContent, { amount: 42 });
+  assert.match(JSON.stringify(result.content), /42/);
+  const pathA = join(dir, 'workspace-a'), pathB = join(dir, 'workspace-b');
+  mkdirSync(join(pathA, '.dsh/dshmm'), { recursive: true }); mkdirSync(pathB);
+  writeFileSync(join(pathA, '.dsh/dshmm/mcp.json'), JSON.stringify({ mcpServers: { scoped: { url: fixture.url, authMode: 'static' } }, exclude: ['real'] }));
+  let callbackAgent;
+  const a = await ctx.agents.create({ sessionId: 'a', cwd: pathA, setup(_c, agent) { callbackAgent = agent; } });
+  const b = await ctx.agents.resume({ resumeSessionId: 'b', cwd: pathB });
+  assert.equal(callbackAgent, a.agent);
+  const list = JSON.parse((await request('GET', '/workspaces')).body).workspaces;
+  const workspace = list.find(ws => ws.path === pathA);
+  assert.equal(workspace.servers[0].status, 'pending-approval');
+  const approved = await request('POST', '/workspaces/approve', { path: pathA, name: 'scoped', fingerprint: workspace.servers[0].fingerprint }); assert.equal(approved.status, 200, approved.body);
+  assert.ok(ctx.tools.schemas(a.agent).some(tool => tool.name === 'mcp__scoped__inspect'));
+  assert.ok(!ctx.tools.schemas(a.agent).some(tool => tool.name === 'mcp__real__inspect'));
+  assert.ok(!ctx.tools.schemas(b.agent).some(tool => tool.name === 'mcp__scoped__inspect'));
+  const forbidden = await ctx.tools.execute({ signal: new AbortController().signal, callId: 'other-scope', name: 'mcp__scoped__inspect', arguments: {}, agent: b.agent }); assert.equal(forbidden.isError, true);
+  // Actual Harness ApprovalService and registry, including audit and cancellation.
+  const permissionPath = `/permissions/${serverId}`;
+  const setMode = async mode => {
+    const view = JSON.parse((await request('GET', permissionPath)).body);
+    assert.equal((await request('PUT', permissionPath, { changes: view.tools.map(t => ({ ...t, mode })) })).status, 200);
+  };
+  const executePolicy = (overrides = {}) => ctx.tools.execute({ signal: new AbortController().signal, callId: 'approval-real', agent: b.agent, name: 'mcp__real__inspect', arguments: {}, ...overrides });
+  const calls = () => fixture.requests.filter(r => r.body.method === 'tools/call').length;
+  await setMode('ask');
+  let count = calls();
+  const unavailable = await executePolicy(); assert.equal(unavailable.isError, true); assert.equal(calls(), count);
+  assert.equal(b.agent.session.events.at(-1).data.outcome, 'unavailable');
+  let prompts = 0;
+  let answerer = ctx.on('approval/request', async () => { prompts++; return 'allowed-once'; }, { global: true });
+  assert.equal((await executePolicy()).isError, false); assert.equal((await executePolicy()).isError, false); assert.equal(prompts, 2); assert.equal(calls(), count + 2);
+  assert.equal(b.agent.session.events.filter(e => e.type === 'approval/asked').length, 3);
+  assert.equal(b.agent.session.events.filter(e => e.type === 'approval/decided').length, 3);
+  await setMode('block'); count = calls(); assert.equal((await executePolicy()).isError, true); assert.equal(prompts, 2); assert.equal(calls(), count);
+  await setMode('allow'); assert.equal((await executePolicy()).isError, false); assert.equal(prompts, 2);
+  answerer(); await setMode('ask');
+  for (const outcome of ['rejected', 'unavailable']) {
+    answerer = ctx.on('approval/request', async () => outcome, { global: true }); count = calls();
+    assert.equal((await executePolicy()).isError, true); assert.equal(calls(), count); answerer();
+  }
+  let resolveAnswer, requestSignal;
+  answerer = ctx.on('approval/request', req => { requestSignal = req.signal; return new Promise(resolve => { resolveAnswer = resolve; }); }, { global: true });
+  count = calls();
+  const abort = new AbortController(), cancelling = executePolicy({ signal: abort.signal });
+  await until(() => !!resolveAnswer); abort.abort();
+  assert.equal((await cancelling).isError, true); assert.equal(requestSignal.aborted, true); resolveAnswer('allowed-once'); assert.equal(calls(), count);
+  resolveAnswer = undefined;
+  const timingOut = executePolicy(); await until(() => !!resolveAnswer);
+  const timeoutResult = await timingOut; assert.equal(timeoutResult.isError, true); assert.match(JSON.stringify(timeoutResult), /timed out/); assert.equal(calls(), count);
+  resolveAnswer('allowed-once'); resolveAnswer = undefined;
+  const stale = executePolicy(); await until(() => !!resolveAnswer); await setMode('allow'); resolveAnswer('allowed-once');
+  assert.equal((await stale).isError, true); assert.equal(calls(), count); answerer();
+  // Short-circuiting unrelated policy cannot bypass the monotonic guard.
+  const bypass = ctx.on('tools/pre-execute', async () => ({ kind: 'allow' }), { global: true, prepend: true });
+  await setMode('block'); assert.equal((await executePolicy()).isError, true);
+  await setMode('ask'); assert.equal((await executePolicy()).isError, true); assert.equal(calls(), count); bypass();
+  // Recheck after asynchronous dispatch wrappers, immediately before MCP I/O.
+  await setMode('allow'); count = calls();
+  const queued = ctx.on('tools/execute', async (exec, next) => { if (exec.name === 'mcp__real__inspect') await setMode('block'); return next(); }, { global: true });
+  assert.equal((await executePolicy()).isError, true); assert.equal(calls(), count); queued(); await setMode('ask');
+  const workspacePermissionPath = `/permissions/${workspace.servers[0].id}`;
+  const workspacePermission = JSON.parse((await request('GET', workspacePermissionPath)).body);
+  assert.equal(workspacePermission.tools[0].mode, 'ask');
+  const scopedCall = () => ctx.tools.execute({ signal: new AbortController().signal, agent: a.agent, callId: 'workspace-call', name: 'mcp__scoped__inspect', arguments: {} });
+  assert.equal((await scopedCall()).isError, true);
+  assert.equal((await request('PUT', workspacePermissionPath, { changes: workspacePermission.tools.map(t => ({ ...t, mode: 'allow' })) })).status, 200);
+  assert.equal((await scopedCall()).isError, false);
+  assert.equal((await request('PUT', workspacePermissionPath, { changes: workspacePermission.tools.map(t => ({ ...t, mode: 'block' })) })).status, 200);
+  count = calls(); assert.equal((await scopedCall()).isError, true); assert.equal(calls(), count);
+  // On-demand dispatch must ask for the child and correlate to the visible root.
+  await request('POST', '/settings/on-demand', { enabled: true });
+  let brokerRequest;
+  answerer = ctx.on('approval/request', async req => { brokerRequest = req; return 'allowed-once'; }, { global: true });
+  const viaBroker = await ctx.tools.execute({ signal: new AbortController().signal, agent: b.agent, callId: 'visible-broker', name: 'mcp_execute_tool', arguments: { name: 'mcp__real__inspect', arguments: {} } });
+  assert.equal(viaBroker.isError, false, JSON.stringify(viaBroker)); assert.equal(brokerRequest.toolName, 'mcp__real__inspect'); assert.equal(brokerRequest.callId, 'visible-broker'); answerer();
+  await setMode('block'); count = calls();
+  const blockedBroker = await ctx.tools.execute({ signal: new AbortController().signal, agent: b.agent, callId: 'blocked-broker', name: 'mcp_execute_tool', arguments: { name: 'mcp__real__inspect', arguments: {} } });
+  assert.match(JSON.stringify(blockedBroker), /blocked/); assert.equal(calls(), count);
+  await setMode('allow');
+  // Broker dispatch must still pass through the real registry's policy guard.
+  const settings = await request('POST', '/settings/on-demand', { enabled: true }); assert.equal(settings.status, 200, settings.body);
+  const brokerNames = ctx.tools.schemas().map(tool => tool.name); assert.ok(brokerNames.includes('mcp_execute_tool'));
+  const guard = ctx.tools.guard(exec => exec.name === 'mcp__real__inspect' ? 'Fixture policy denies this call' : undefined);
+  const broker = await ctx.tools.execute({ signal: new AbortController().signal, callId: 'broker-call', name: 'mcp_execute_tool', arguments: { name: 'mcp__real__inspect', arguments: {} } });
+  assert.match(JSON.stringify(broker), /Fixture policy denies|block|denied/i); guard();
+  const allowed = await ctx.tools.execute({ signal: new AbortController().signal, callId: 'broker-allowed', name: 'mcp_execute_tool', arguments: { name: 'mcp__real__inspect', arguments: {} } });
+  assert.deepEqual(allowed.value.result.structuredContent, { amount: 42 });
+  // Full access keeps valid Allow grants but cannot answer an Ask. Preserve the
+  // real approval audit and make the definition reset actionable in both paths.
+  b.agent.session.append('sandbox/mode', { mode: 'danger-full-access' });
+  setApprovalPolicy(b.agent.session, 'never');
+  await request('POST', '/settings/on-demand', { enabled: false });
+  fixtureDescription = 'Updated documentation';
+  assert.equal((await request('POST', `/servers/${serverId}/connect`, {})).status, 200);
+  assert.equal(JSON.parse((await request('GET', permissionPath)).body).tools[0].mode, 'allow');
+  const wordingResult = await executePolicy(); assert.equal(wordingResult.isError, false, JSON.stringify(wordingResult));
+  fixtureProperties = { additional_input: { type: 'string' } };
+  assert.equal((await request('POST', `/servers/${serverId}/connect`, {})).status, 200);
+  count = calls();
+  const reset = await executePolicy();
+  assert.equal(reset.isError, true); assert.match(JSON.stringify(reset.content), /approval prompts are disabled/);
+  assert.match(JSON.stringify(reset.content), /requires renewed approval/); assert.equal(calls(), count);
+  assert.equal(b.agent.session.events.at(-1).data.outcome, 'rejected');
+  await request('POST', '/settings/on-demand', { enabled: true });
+  const resetBroker = await ctx.tools.execute({ signal: new AbortController().signal, agent: b.agent, callId: 'reset-broker', name: 'mcp_execute_tool', arguments: { name: 'mcp__real__inspect', arguments: {} } });
+  assert.match(JSON.stringify(resetBroker), /approval prompts are disabled/); assert.equal(calls(), count);
+  await request('POST', '/settings/on-demand', { enabled: false });
+  await setMode('allow'); assert.equal((await executePolicy()).isError, false); assert.equal(calls(), count + 1);
+  await setMode('block'); assert.match(JSON.stringify(await executePolicy()), /blocked/); assert.equal(calls(), count + 1);
+  await setMode('ask');
+  const explicitAsk = await executePolicy(); assert.match(JSON.stringify(explicitAsk), /approval prompts are disabled/); assert.doesNotMatch(JSON.stringify(explicitAsk), /requires renewed approval/);
+  setApprovalPolicy(b.agent.session, 'ask');
+  await setMode('ask'); resolveAnswer = undefined;
+  answerer = ctx.on('approval/request', req => { requestSignal = req.signal; return new Promise(resolve => { resolveAnswer = resolve; }); }, { global: true });
+  count = calls(); const withdrawn = executePolicy(); await until(() => !!resolveAnswer);
+  await connection.dispose();
+  assert.equal((await withdrawn).isError, true); assert.equal(requestSignal.aborted, true); resolveAnswer('allowed-once'); assert.equal(calls(), count); answerer();
+  await until(() => plugin.state === FiberState.PENDING);
+  assert.equal(routes.length, 0); assert.equal(ctx.tools.schemas().length, 0); assert.deepEqual(Object.getOwnPropertyDescriptor(agents, 'create'), createBefore); assert.ok(!existsSync(join(dir, 'writer.lock')));
+  connection = provider(); await connection; await plugin;
+  assert.equal(plugin.state, FiberState.ACTIVE); assert.equal(routes.length, 1);
+  await until(() => ctx.tools.schemas().some(tool => tool.name === 'mcp__real__inspect'));
+  assert.ok(ctx.tools.schemas(a.agent).some(tool => tool.name === 'mcp__scoped__inspect'));
+  assert.ok(!ctx.tools.schemas(a.agent).some(tool => tool.name === 'mcp__real__inspect'));
+  assert.ok(!ctx.tools.schemas(b.agent).some(tool => tool.name === 'mcp__scoped__inspect'));
+  await a.dispose(); await b.dispose();
+  await plugin.dispose(); assert.equal(routes.length, 0); assert.deepEqual(Object.getOwnPropertyDescriptor(agents, 'create'), createBefore); assert.ok(!existsSync(join(dir, 'writer.lock')));
+  console.log('PASS: real per-tool approval, audit, timeout, cancellation, stale grants, policy bypass prevention, broker permissions, Harness authentication, registry execution, broker guard, real agent create/resume, workspace isolation, pending/active/withdraw/restore/dispose lifecycle and persistence.');
+} finally { await ctx.fiber.dispose(); await fixture.close(); rmSync(dir, { recursive: true, force: true }); }

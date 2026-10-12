@@ -1,0 +1,3 @@
+- insert:
+    - id: dsh-local-llm-cli
+      name: dsh-local-llm-cli

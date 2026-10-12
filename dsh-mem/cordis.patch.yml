@@ -1,0 +1,12 @@
+- insert:
+    - id: dsh-mem
+      name: '@local/dsh-mem'
+      config:
+        # Tunables are read defensively in index.js; these defaults survive
+        # upgrades and are editable from the user's patch layer.
+        digestMaxChars: 1200
+        standingTopK: 12
+        autoLessons: true
+        autoLessonCap: 40
+        maxMemories: 200
+        searchLimit: 8
