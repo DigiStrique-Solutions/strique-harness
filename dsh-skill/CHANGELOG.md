@@ -1,3 +1,7 @@
+## 0.4.3 — 2026-10-16
+
+Align Harness dependencies and lockfiles with `0.2.1-alpha.4` and declare exact runtime support in `engines.dsh`.
+
 ## 0.4.2 (2026-10-05)
 
 - Target Harness `0.2.1-alpha.1` and Cordis `4.0.5-alpha.1` and refresh the dependency lockfile.

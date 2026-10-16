@@ -1,5 +1,7 @@
 # dsh-mem
 
+Compatibility (1.0.1): Tested with Harness `0.2.1-alpha.4`, Cordis `4.0.5-alpha.2`, and Schemastery `3.18.5-alpha.2`. `engines.dsh` pins this release to the tested Harness version; other versions require separate verification.
+
 Persistent agent memory for the dsh harness, in the spirit of Claude memory / Codex memory: the agent learns from its mistakes, remembers preferences and durable facts, distills concepts once instead of re-explaining them, and keeps all of it small enough to be worth recalling. Ships with a Web UI panel in the Harness sidebar.
 
 Plain JavaScript, no build step, no dependencies on harness packages. Kept fully separate from other plugins: one bundle, one storage domain (`dsh_mem`), one API route (`/api/dsh-mem/memories`), one tool (`memory`).

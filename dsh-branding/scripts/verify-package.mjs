@@ -39,7 +39,7 @@ const [manifestText, patch, provenance, favicon, bundle, sourceMap, files, bundl
 const manifest = JSON.parse(manifestText)
 
 assert(manifest.name === '@strique/dsh-branding', 'package name is incorrect')
-assert(manifest.packageManager === 'pnpm@11.7.0', 'pnpm pin is incorrect')
+assert(manifest.packageManager === 'pnpm@11.28.5', 'pnpm pin is incorrect')
 assert(manifest.engines?.node === '^22.19.0 || >=24.0.0', 'Node engine range is incorrect')
 assert(manifest.exports?.['./client']?.default === './lib/client.js', './client export is incorrect')
 assert(manifest.exports?.['./package.json'] === './package.json', './package.json export is missing')

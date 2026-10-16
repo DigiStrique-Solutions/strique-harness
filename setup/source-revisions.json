@@ -1,0 +1,9 @@
+{
+  "harness": "86a402200d95fecef4529d969836f1fe13c6cb0d",
+  "dsh-branding": "09a97c648e15fe63abeb020286372fb2cba0a1e7",
+  "dsh-local-llm-cli": "c14180f928223ea28da98d1235f09980506f482a",
+  "dsh-mcp-secure": "6e8a3eccc7ae3bff33c922ec521b382565785b1a",
+  "dsh-mem": "3aa75f38c80ec36943079459441369f90cbf95a1",
+  "dsh-notify": "a9fcda4c062a23390bf51ac6a39407684a72f038",
+  "dsh-skill": "d33c9212036f42d653151bfc6bc16bc2447d396e"
+}

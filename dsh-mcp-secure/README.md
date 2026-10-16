@@ -1,5 +1,7 @@
 # Strique DSH MCP Client
 
+Compatibility (0.9.3): Tested with Harness `0.2.1-alpha.4`, Cordis `4.0.5-alpha.2`, and Schemastery `3.18.5-alpha.2`. `engines.dsh` pins this release to the tested Harness version; other versions require separate verification.
+
 A security fork of `hyqhyq3/dsh-mcp-manager` 0.6.0 (commit `69d5cbc76e21606867f6dbef05025e2e2dfdbd04`). This repository is maintained by DigiStrique Solutions. The installable package remains `dsh-mcp-manager-secure`, with its own state directory, to preserve compatibility with existing installations. It is not published to npm.
 
 Manage HTTP and local stdio MCP servers under **Settings > MCP (Secure)**. HTTP supports unauthenticated endpoints, custom headers, environment-backed bearer tokens, and SDK-managed OAuth with PKCE. Providers must implement a compatible MCP transport and authentication flow; an arbitrary URL alone is not sufficient.

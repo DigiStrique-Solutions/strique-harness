@@ -1,3 +1,7 @@
+## 0.9.3 — 2026-10-16
+
+Align Harness dependencies and lockfiles with `0.2.1-alpha.4` and declare exact runtime support in `engines.dsh`.
+
 # Changes
 
 ## Unreleased

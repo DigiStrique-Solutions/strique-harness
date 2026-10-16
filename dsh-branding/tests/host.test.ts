@@ -26,7 +26,9 @@ async function bench() {
   await context.plugin(WebServer, { host: '127.0.0.1', port: 0 }).await()
   const fiber = context.plugin({ name: 'strique-branding-test', inject: [...inject], apply })
   await fiber.await()
-  return { context, fiber, port: context.webServer.port }
+  const port = context.webServer.port
+  if (port === undefined) throw new Error('Branding test server did not start')
+  return { context, fiber, port }
 }
 
 describe('Strique branding Host routes', () => {

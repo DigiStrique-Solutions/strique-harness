@@ -1,3 +1,7 @@
+# Harness 0.2.1-alpha.4 verification, 2026-10-16
+
+Dependency pins and `engines.dsh` target Harness `0.2.1-alpha.4`. Syntax, behavior, and real Harness service integration checks pass without version exemptions. No running user profile was changed.
+
 # 0.4.2: Harness 0.2.1-alpha.1 verification, 2026-10-05
 
 Exact published Harness dependencies target `0.2.1-alpha.1`; Cordis support packages and lockfiles match the current checkout. `pnpm test`: Host and Client builds and all 83 tests passed, including HTTP security, runtime access policies, context inspection, and lifecycle checks. The current checkout’s `evaluatePluginCompatibility` admits the plugin without exemptions. The existing web profile links this checkout. No running process was restarted.

@@ -27,6 +27,11 @@ function readState() {
   if (value.previous) compareVersions(value.previous, '0.0.0');
   return value;
 }
+function saveOwner(file, owner) {
+  const temporary = `${file}.${process.pid}.tmp`;
+  fs.writeFileSync(temporary, JSON.stringify(owner), { mode: 0o600 });
+  fs.renameSync(temporary, file);
+}
 function saveState(state) {
   const temporary = `${stateFile}.${process.pid}.tmp`;
   fs.writeFileSync(temporary, JSON.stringify(state, null, 2), { mode: 0o600 });
@@ -64,7 +69,7 @@ function lock() {
     if (!fs.existsSync(owner) || alive(JSON.parse(fs.readFileSync(owner)).pid)) throw new Error('Another installation/update is in progress');
     fs.rmSync(dir, { recursive: true }); fs.mkdirSync(dir);
   }
-  fs.writeFileSync(path.join(dir, 'owner.json'), JSON.stringify({ pid: process.pid }), { mode: 0o600 });
+  saveOwner(path.join(dir, 'owner.json'), { pid: process.pid });
   return () => fs.rmSync(dir, { recursive: true });
 }
 function prepareHome() {
@@ -137,7 +142,7 @@ async function start() {
     const dir = path.join(data, 'running');
     if (fs.existsSync(dir)) fs.rmSync(dir, { recursive: true });
     fs.mkdirSync(dir);
-    fs.writeFileSync(path.join(dir, 'owner.json'), JSON.stringify({ pid: process.pid }), { mode: 0o600 });
+    saveOwner(path.join(dir, 'owner.json'), { pid: process.pid });
     root = currentRoot();
   } finally { unlock(); }
   const cli = path.join(root, 'runtime/node_modules/@deepseek-ai/dsh/lib/bin.js');
@@ -161,7 +166,7 @@ async function start() {
   });
   control.listen(0, '127.0.0.1', () => {
     const address = control.address();
-    fs.writeFileSync(path.join(data, 'running/owner.json'), JSON.stringify({ pid: process.pid, port: address.port, token }), { mode: 0o600 });
+    saveOwner(path.join(data, 'running/owner.json'), { pid: process.pid, port: address.port, token });
   });
   let cleaned = false;
   const cleanup = () => {
@@ -177,7 +182,7 @@ async function start() {
     const ownerFile = path.join(data, 'running/owner.json');
     if (url && fs.existsSync(ownerFile)) {
       const owner = JSON.parse(fs.readFileSync(ownerFile));
-      if (owner.url !== url) fs.writeFileSync(ownerFile, JSON.stringify({ ...owner, url }), { mode: 0o600 });
+      if (owner.url !== url) saveOwner(ownerFile, { ...owner, url });
     }
   });
   child.stderr.on('data', chunk => { fs.writeSync(log, chunk); if (process.stderr.isTTY) process.stderr.write(chunk); });

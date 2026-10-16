@@ -32,7 +32,7 @@ async function setup(t, config = {}, script = []) {
   const root = await mkdtemp(join(tmpdir(), 'skills-runtime-'))
   const ctx = new Context()
   t.after(async () => { await ctx.fiber.dispose(); await rm(root, { recursive: true, force: true }) })
-  await mountAgentLoopTestDependencies(ctx)
+  await mountAgentLoopTestDependencies(ctx, { workingDirectory: true })
   await ctx.plugin(SkillRegistry)
   ctx.provide('agentPresets', { serviceFor: () => undefined, acquireScope: async () => ({ key: undefined, [Symbol.asyncDispose]: async () => undefined }), composedPreset: () => undefined, composeFrom: () => undefined })
   ctx.provide('sessionQuery', {})
@@ -57,7 +57,7 @@ test('official core receives complete summaries before parent and child requests
   assert.doesNotMatch(JSON.stringify(adapter.requests[0].messages), /PRIVATE_SKILL_BODY/)
   assert.match(JSON.stringify(adapter.requests[1].messages), /PRIVATE_SKILL_BODY/)
   await ctx.plugin(SubagentRuntime); await ctx.plugin(Spawn, { providerName: 'spawn' })
-  const child = await ctx.subagents.start('spawn', { parent: agent, prompt: [{ type: 'text', text: 'Use available skills' }], signal: new AbortController().signal })
+  const child = await ctx.subagents.startActivation({ provider: 'spawn', label: 'skills fixture', delivery: 'caller', request: { parent: agent, prompt: [{ type: 'text', text: 'Use available skills' }] }, signal: new AbortController().signal })
   try { assert.equal((await child.result).stopReason, 'completed') } finally { await child.dispose() }
   assert.match(JSON.stringify(adapter.requests[2].messages), /CATALOG_FIXTURE/)
   assert.doesNotMatch(JSON.stringify(adapter.requests[2].messages), /PRIVATE_SKILL_BODY/)

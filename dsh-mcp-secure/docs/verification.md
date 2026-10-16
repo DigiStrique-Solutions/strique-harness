@@ -1,3 +1,7 @@
+# Harness 0.2.1-alpha.4 verification, 2026-10-16
+
+Dependency pins and `engines.dsh` target Harness `0.2.1-alpha.4`. Syntax, behavior, and real Harness service integration checks pass without version exemptions. No running user profile was changed.
+
 # Harness 0.2.0-rc.2 verification, 2026-10-01
 
 Cordis peer and development dependencies now target `4.0.4`. `pnpm run check` and `pnpm test` pass (44 tests). The real Harness integration also passes:

@@ -226,7 +226,20 @@ test('default launch avoids an occupied port without stopping its owner and pres
   fs.unlinkSync(path.join(root, 'inventory.json'));
   fs.writeFileSync(path.join(root, 'inventory.json'), JSON.stringify(inventory(root)));
   controller(root, data, 'install');
-  const child = spawn(process.execPath, [path.join(root, 'control.mjs'), 'start', '--no-open'], {
+  // Widen the filesystem write window so polling catches non-atomic owner updates.
+  const slowWrites = path.join(dir, 'slow-owner-writes.cjs');
+  fs.writeFileSync(slowWrites, `
+    const fs = require('node:fs');
+    const write = fs.writeFileSync;
+    fs.writeFileSync = function(file, contents, options) {
+      if (String(file).includes('owner.json')) {
+        write.call(this, file, '', options);
+        Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 100);
+      }
+      return write.call(this, file, contents, options);
+    };
+  `);
+  const child = spawn(process.execPath, ['--require', slowWrites, path.join(root, 'control.mjs'), 'start', '--no-open'], {
     env: { ...process.env, STRIQUE_DATA_DIR: data }, stdio: 'ignore',
   });
   const exited = once(child, 'exit');
