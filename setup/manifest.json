@@ -22,8 +22,8 @@
     {
       "name": "dsh-better-sidebar",
       "dir": "dsh-bettersidebar",
-      "version": "0.24.1",
-      "spec": "dsh-better-sidebar@0.24.1",
+      "version": "0.26.1",
+      "spec": "dsh-better-sidebar@0.26.1",
       "packageManager": "pnpm@11.8.0"
     },
     {

@@ -7,7 +7,7 @@
  * line as one insertion plus one deletion (git's own accounting).
  */
 import { describe, expect, it } from 'vitest'
-import { parseUnifiedDiff, unifiedSegments, diffLines, pairMods, diffStats, untrackedFile, foldRowsFromContents, decodeGitPath, type FoldSegment } from '../src/client/diff/rows.ts'
+import { parseUnifiedDiff, unifiedSegments, diffLines, pairMods, diffStats, untrackedFile, foldRowsFromContents, decodeGitPath, MAX_LCS_CELLS, type FoldSegment } from '../src/client/diff/rows.ts'
 
 const twoHunks = [
   'diff --git a/a.ts b/a.ts',
@@ -144,6 +144,50 @@ describe('pairMods', () => {
   it('matches diffLines output (the LCS walk pairs rewrites the same way)', () => {
     const rows = diffLines('hello world', 'hello dsh')
     expect(rows.map(r => r.kind)).toEqual(['mod', 'mod'])
+  })
+})
+
+/**
+ * The dense LCS table is one JS number per cell at ~8 bytes each, so its cost
+ * is the input's line-count product: 5000×5000 cells measured 193MB and
+ * 10000×10000 cells 765MB. A session file op can hand `diffLines` a prior
+ * content that big (the op carries the whole previous file), so past
+ * MAX_LCS_CELLS the table is never built and the output degrades to
+ * all-deletions + all-additions.
+ */
+describe('diffLines scale guard', () => {
+  it('degrades a 10000×10000 pair to all-del + all-add, in order and fast', () => {
+    const oldLines = Array.from({ length: 10_000 }, (_, i) => `line ${String(i + 1)}`)
+    const newLines = oldLines.slice()
+    // One edit in the middle: the LCS walk would misalign every line after it.
+    newLines[4_999] = 'line 5000 changed'
+    const startedAt = performance.now()
+    const rows = diffLines(oldLines.join('\n'), newLines.join('\n'))
+    const elapsed = performance.now() - startedAt
+    // The guard is O(n+m); building the table here would be 100M cells.
+    expect(elapsed).toBeLessThan(2_000)
+    expect(rows).toHaveLength(20_000)
+    expect(rows.every(r => r.kind === 'del' || r.kind === 'add')).toBe(true)
+    const dels = rows.slice(0, 10_000)
+    const adds = rows.slice(10_000)
+    expect(dels.every(r => r.kind === 'del')).toBe(true)
+    expect(adds.every(r => r.kind === 'add')).toBe(true)
+    // Strictly increasing 1..10000 on each side, contiguous.
+    expect(dels.map(r => r.oldLine)).toEqual(Array.from({ length: 10_000 }, (_, i) => i + 1))
+    expect(adds.map(r => r.newLine)).toEqual(Array.from({ length: 10_000 }, (_, i) => i + 1))
+    expect(dels[4_999]).toMatchObject({ kind: 'del', oldLine: 5_000, text: 'line 5000' })
+    expect(adds[4_999]).toMatchObject({ kind: 'add', newLine: 5_000, text: 'line 5000 changed' })
+  })
+
+  it('still builds the table at exactly the cell limit (the bound is inclusive)', () => {
+    const side = Math.floor(Math.sqrt(MAX_LCS_CELLS))
+    expect(side * side).toBe(MAX_LCS_CELLS)
+    const text = Array.from({ length: side }, (_, i) => `line ${String(i + 1)}`).join('\n')
+    const rows = diffLines(text, text)
+    expect(rows).toHaveLength(side)
+    expect(rows.every(r => r.kind === 'context')).toBe(true)
+    expect(rows[0]).toMatchObject({ oldLine: 1, newLine: 1 })
+    expect(rows[side - 1]).toMatchObject({ oldLine: side, newLine: side })
   })
 })
 
@@ -300,6 +344,81 @@ describe('parseUnifiedDiff paths', () => {
       '-a',
       '+b',
     ])).toEqual({ oldPath: 'a/old.md', newPath: 'b/new.md', binary: false, hunks: 1 })
+  })
+})
+
+describe('hunk lines that wear a file-header prefix', () => {
+  // A deleted line is `-` plus its text, so deleting `-- foo` emits `--- foo`:
+  // a hunk line that starts exactly like the `--- a/path` separator. Reading it
+  // as a header cut the hunk there (everything after it vanished when no later
+  // `@@` resynced) and stamped the deleted text onto the file's old path. The
+  // mirror case is an added `++ i;` (C's increment), which renamed the file.
+  // git never writes `---`/`+++` INSIDE a hunk — that is the tiebreaker.
+  it('keeps a deleted `-- foo` line inside its hunk, path and stats intact', () => {
+    // The deleted source line is `-- foo`, so the diff row is `-` + that text —
+    // i.e. `--- foo`, byte-for-byte the shape of a `--- a/path` header.
+    const file = parseUnifiedDiff([
+      'diff --git a/sample.txt b/sample.txt',
+      '--- a/sample.txt',
+      '+++ b/sample.txt',
+      '@@ -1,3 +1,2 @@',
+      ' keep 1',
+      '--- foo',
+      ' keep 3',
+    ].join('\n')).files[0]!
+    expect({ oldPath: file.oldPath, newPath: file.newPath, hunks: file.hunks.length }).toEqual({
+      oldPath: 'a/sample.txt',
+      newPath: 'b/sample.txt',
+      hunks: 1,
+    })
+    // All three rows survive, in order, with the deleted line's own text (a
+    // row's text is what follows its marker, so a context row keeps no leading
+    // space and the deleted line keeps both of its dashes).
+    expect(file.hunks[0]!.lines.map(line => `${line.kind}:${line.text}`))
+      .toEqual(['ctx:keep 1', 'del:-- foo', 'ctx:keep 3'])
+    // `git diff --numstat` for this change is `0 1`: the row the old parser
+    // swallowed is the only change in the file.
+    expect(diffStats(unifiedSegments(file))).toEqual({ added: 0, deleted: 1 })
+  })
+
+  it('keeps an added `++ i;` line inside its hunk and does not rename the file', () => {
+    // The added source line is `++ i;`, so the diff row is `+` + that text.
+    const file = parseUnifiedDiff([
+      'diff --git a/loop.c b/loop.c',
+      '--- a/loop.c',
+      '+++ b/loop.c',
+      '@@ -1,2 +1,3 @@',
+      ' for (;;) {',
+      '+++ i;',
+      ' }',
+    ].join('\n')).files[0]!
+    expect({ newPath: file.newPath, hunks: file.hunks.length })
+      .toEqual({ newPath: 'b/loop.c', hunks: 1 })
+    expect(file.hunks[0]!.lines.map(line => `${line.kind}:${line.text}`))
+      .toEqual(['ctx:for (;;) {', 'add:++ i;', 'ctx:}'])
+  })
+
+  it('still reads a real header that follows a hunk (the guard is the hunk, not the prefix)', () => {
+    // The second file's `---`/`+++` arrive while the first file's hunk is still
+    // open (nothing flushed it yet) — exactly the state the gate must let pass.
+    const parsed = parseUnifiedDiff([
+      'diff --git a/a.txt b/a.txt',
+      '--- a/a.txt',
+      '+++ b/a.txt',
+      '@@ -1,1 +1,1 @@',
+      '-old',
+      '+new',
+      'diff --git a/b/-- deeper.txt b/b/-- deeper.txt',
+      '--- a/b/-- deeper.txt',
+      '+++ b/b/-- deeper.txt',
+      '@@ -1,1 +1,1 @@',
+      '-gone',
+      '+kept',
+    ].join('\n'))
+    expect(parsed.files.map(file => [file.oldPath, file.newPath, file.hunks.length])).toEqual([
+      ['a/a.txt', 'b/a.txt', 1],
+      ['a/b/-- deeper.txt', 'b/b/-- deeper.txt', 1],
+    ])
   })
 })
 
