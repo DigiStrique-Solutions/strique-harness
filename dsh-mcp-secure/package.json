@@ -1,7 +1,7 @@
 {
   "name": "dsh-mcp-manager-secure",
   "description": "Authenticated MCP server management with approved workspace configurations and isolated credentials",
-  "version": "0.9.3",
+  "version": "0.9.4",
   "type": "module",
   "main": "lib/index.js",
   "exports": {
@@ -51,17 +51,17 @@
   },
   "engines": {
     "node": "^22.19.0 || >=24.0.0",
-    "dsh": "0.2.1-alpha.4"
+    "dsh": "0.2.1-rc.2"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "1.29.0",
-    "@deepseek-ai/schemastery": "3.18.5-alpha.2"
+    "@deepseek-ai/schemastery": "3.18.5"
   },
   "peerDependencies": {
-    "@deepseek-ai/cordis": "4.0.5-alpha.2"
+    "@deepseek-ai/cordis": "4.0.5"
   },
   "devDependencies": {
-    "@deepseek-ai/cordis": "4.0.5-alpha.2"
+    "@deepseek-ai/cordis": "4.0.5"
   },
   "scripts": {
     "test": "node --test tests/*.test.mjs",

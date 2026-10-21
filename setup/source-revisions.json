@@ -1,11 +1,11 @@
 {
-  "harness": "86a402200d95fecef4529d969836f1fe13c6cb0d",
-  "dsh-branding": "09a97c648e15fe63abeb020286372fb2cba0a1e7",
-  "dsh-local-llm-cli": "c14180f928223ea28da98d1235f09980506f482a",
-  "dsh-mcp-secure": "6e8a3eccc7ae3bff33c922ec521b382565785b1a",
-  "dsh-mem": "3aa75f38c80ec36943079459441369f90cbf95a1",
-  "dsh-notify": "a9fcda4c062a23390bf51ac6a39407684a72f038",
-  "dsh-skill": "d33c9212036f42d653151bfc6bc16bc2447d396e",
+  "harness": "687f282e8625c6b8d11ff58211a90524be2e4317",
+  "dsh-branding": "9db1088b316c764c9abd797c8deb334a8288a691",
+  "dsh-local-llm-cli": "3ece73613ed8466a28cd0ab78058ac7a1c52577c",
+  "dsh-mcp-secure": "12c20deb8a9d90b9b8cf74fbcf5d4a03bbd97252",
+  "dsh-mem": "76833ed02cadfc7790d588b5fac2958f9bf5b4f0",
+  "dsh-notify": "9c90e0e08a6ec284ab5d77de42371f00365f80e7",
+  "dsh-skill": "17fc3b1d2834de0693dfea2bc41681d2e7b67c81",
   "dsh-univer": "8f85ce4074fdbe51416b6c337468bb916a302c2a",
-  "dsh-bettersidebar": "05e64855ed636e6eb68a53b48398fa4b62403248"
+  "dsh-bettersidebar": "83faf70940160e5cd4c5332f5400aa8f4dbbb6d6"
 }

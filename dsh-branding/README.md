@@ -1,6 +1,6 @@
 # @strique/dsh-branding
 
-Compatibility (0.1.13): Tested with Harness `0.2.1-alpha.4`, Cordis `4.0.5-alpha.2`, and Schemastery `3.18.5-alpha.2`. `engines.dsh` pins this release to the tested Harness version; other versions require separate verification.
+Compatibility (0.1.14): Tested with Harness `0.2.1-rc.2`, Cordis `4.0.5`, and Schemastery `3.18.5`. `engines.dsh` pins this release to the tested Harness version; other versions require separate verification.
 
 Strique visual identity and marketing persona for DeepSeek Harness.
 
@@ -58,8 +58,8 @@ Version 0.1.12 targets Harness `0.2.1-alpha.1`. The sidebar wordmark fits the sh
 
 ## Compatibility
 
-- DeepSeek Harness `0.2.1-alpha.4`
-- Cordis `4.0.5-alpha.2`
+- DeepSeek Harness `0.2.1-rc.2`
+- Cordis `4.0.5`
 - Node.js `^22.19.0 || >=24.0.0`
 - pnpm `11.28.5`
 - Web Client platform

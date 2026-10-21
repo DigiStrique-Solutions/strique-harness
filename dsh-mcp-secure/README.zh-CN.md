@@ -6,7 +6,7 @@
 
 在 **Settings > MCP (Secure)** 中管理 HTTP 和 stdio MCP 服务器。支持无认证、自定义请求头、环境变量令牌和基于 MCP SDK 的 OAuth / PKCE。服务器必须支持相应的 MCP 协议和认证方式，任意网址并不一定可用。
 
-当前开发分支的验证目标为 Harness `0.2.0-rc.2`、Cordis `4.0.4`、MCP SDK `1.29.0`。插件依赖 `tools`、`webServer`、`connection`、`agents`，旧版没有认证服务的 Harness 无法激活。
+当前开发分支的验证目标为 Harness `0.2.1-rc.2`、Cordis `4.0.5`、MCP SDK `1.29.0`。插件依赖 `tools`、`webServer`、`connection`、`agents`，旧版没有认证服务的 Harness 无法激活。
 
 工作区的 `.dsh/dshmm/mcp.json` 只提出配置，必须在已认证的设置页面批准具体配置后才能启动。修改文件会撤销原有批准；在设置页面保存工作区配置会批准该配置。stdio 子进程只继承最小环境变量，但仍拥有当前操作系统账户的文件和网络权限，并非沙箱。
 
@@ -48,4 +48,4 @@ DSH_HOME=/absolute/test-home dsh --profile web --port 3198
 
 ## 0.9.3 兼容性
 
-支持 Harness `0.2.1-alpha.4`、Cordis `4.0.5-alpha.2` 和 Schemastery `3.18.5-alpha.2`。`engines.dsh` 限定为已验证的 Harness 版本。
+支持 Harness `0.2.1-rc.2`、Cordis `4.0.5` 和 Schemastery `3.18.5`。`engines.dsh` 限定为已验证的 Harness 版本。

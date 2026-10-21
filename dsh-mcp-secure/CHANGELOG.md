@@ -1,5 +1,9 @@
 ## 0.9.3 — 2026-10-16
 
+## 0.9.4 — 2026-10-21
+
+Target Harness `0.2.1-rc.2` and its current Cordis package versions.
+
 Align Harness dependencies and lockfiles with `0.2.1-alpha.4` and declare exact runtime support in `engines.dsh`.
 
 # Changes

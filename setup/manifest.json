@@ -1,57 +1,57 @@
 {
   "harness": {
     "dir": "harness",
-    "spec": "@deepseek-ai/dsh@0.2.1-alpha.4",
+    "spec": "@deepseek-ai/dsh@0.2.1-rc.2",
     "packageManager": "pnpm@11.28.5"
   },
   "plugins": [
     {
       "name": "@local/dsh-mem",
       "dir": "dsh-mem",
-      "version": "1.0.1",
+      "version": "1.0.2",
       "spec": null,
       "packageManager": "pnpm@11.7.0"
     },
     {
       "name": "@strique/dsh-branding",
       "dir": "dsh-branding",
-      "version": "0.1.13",
-      "spec": "@strique/dsh-branding@0.1.13",
+      "version": "0.1.14",
+      "spec": "@strique/dsh-branding@0.1.14",
       "packageManager": "pnpm@11.28.5"
     },
     {
       "name": "dsh-better-sidebar",
       "dir": "dsh-bettersidebar",
-      "version": "0.26.1",
-      "spec": "dsh-better-sidebar@0.26.1",
+      "version": "0.28.0",
+      "spec": "dsh-better-sidebar@0.28.0",
       "packageManager": "pnpm@11.8.0"
     },
     {
       "name": "dsh-local-llm-cli",
       "dir": "dsh-local-llm-cli",
-      "version": "0.1.1",
-      "spec": "dsh-local-llm-cli@0.1.1",
+      "version": "0.1.2",
+      "spec": "dsh-local-llm-cli@0.1.2",
       "packageManager": "pnpm@11.7.0"
     },
     {
       "name": "dsh-mcp-manager-secure",
       "dir": "dsh-mcp-secure",
-      "version": "0.9.3",
-      "spec": "dsh-mcp-manager-secure@0.9.3",
+      "version": "0.9.4",
+      "spec": "dsh-mcp-manager-secure@0.9.4",
       "packageManager": "pnpm@11.7.0"
     },
     {
       "name": "dsh-notify",
       "dir": "dsh-notify",
-      "version": "0.1.5",
-      "spec": "dsh-notify@0.1.5",
+      "version": "0.1.6",
+      "spec": "dsh-notify@0.1.6",
       "packageManager": "pnpm@10.33.0"
     },
     {
       "name": "dsh-skills-manager-secure",
       "dir": "dsh-skill",
-      "version": "0.4.3",
-      "spec": "dsh-skills-manager-secure@0.4.3",
+      "version": "0.4.4",
+      "spec": "dsh-skills-manager-secure@0.4.4",
       "packageManager": "pnpm@10.33.0"
     },
     {

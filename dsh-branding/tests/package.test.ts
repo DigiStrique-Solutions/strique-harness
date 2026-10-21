@@ -14,7 +14,7 @@ describe('package contract', () => {
   it('declares one web Client and stable branding and persona Loader rows', async () => {
     const manifest = JSON.parse(await readFile(new URL('package.json', root), 'utf8'))
     expect(manifest.name).toBe('@strique/dsh-branding')
-    expect(manifest.version).toBe('0.1.13')
+    expect(manifest.version).toBe('0.1.14')
     expect(manifest.engines.node).toBe('^22.19.0 || >=24.0.0')
     expect(manifest.packageManager).toBe('pnpm@11.28.5')
     expect(manifest.dsh).toEqual({

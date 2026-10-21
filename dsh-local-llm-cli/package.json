@@ -1,6 +1,6 @@
 {
   "name": "dsh-local-llm-cli",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "private": true,
   "type": "module",
   "main": "lib/index.js",
@@ -31,7 +31,7 @@
   },
   "engines": {
     "node": "^22.19.0 || >=24.0.0",
-    "dsh": "0.2.1-alpha.4"
+    "dsh": "0.2.1-rc.2"
   },
   "scripts": {
     "test": "node --test test/*.test.mjs",
@@ -43,9 +43,9 @@
     "ajv-formats": "^3.0.1"
   },
   "peerDependencies": {
-    "@deepseek-ai/cordis": "4.0.5-alpha.2",
-    "@deepseek-ai/dsh-llm": "0.2.1-alpha.4",
-    "@deepseek-ai/schemastery": "3.18.5-alpha.2"
+    "@deepseek-ai/cordis": "4.0.5",
+    "@deepseek-ai/dsh-llm": "0.2.1-rc.2",
+    "@deepseek-ai/schemastery": "3.18.5"
   },
   "devDependencies": {
     "@deepseek-ai/cordis": "link:../harness/vendor/cordis",

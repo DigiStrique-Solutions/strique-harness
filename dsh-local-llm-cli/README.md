@@ -1,12 +1,12 @@
 # dsh-local-llm-cli
 
-Compatibility (0.1.1): Tested with Harness `0.2.1-alpha.4`, Cordis `4.0.5-alpha.2`, and Schemastery `3.18.5-alpha.2`. `engines.dsh` pins this release to the tested Harness version; other versions require separate verification.
+Compatibility (0.1.2): Tested with Harness `0.2.1-rc.2`, Cordis `4.0.5`, and Schemastery `3.18.5`. `engines.dsh` pins this release to the tested Harness version; other versions require separate verification.
 
 Codex CLI model provider for DeepSeek Harness, with a TablePlus-style settings panel. Queries run through the installed `codex exec` executable. The plugin uses `codex app-server` only to discover model metadata; it does not use that server for inference.
 
 ## Requirements
 
-- Harness `0.2.1-alpha.4`, Node `^22.19.0 || >=24`, and Codex CLI. Verified with Codex `0.159.2` on macOS.
+- Harness `0.2.1-rc.2`, Node `^22.19.0 || >=24`, and Codex CLI. Verified with Codex `0.159.2` on macOS.
 - The executable must be installed on the **Harness host**, not merely on the browser's machine. A container needs its own CLI installation and login.
 - A valid Codex login and network access to its model service. OpenAI inference is not offline, even though the executable runs locally.
 
@@ -74,7 +74,7 @@ The final-response envelope has `text` and `toolCalls`; each call contains a `na
 - **Native execution controls.** Requests ignore personal config and rules, set a read-only sandbox, disable web search, project instruction discovery, shell/unified execution, hooks, connectors, plugins, delegation, memories, goals, image tools, browser tools, sleep, and tool suggestions using CLI controls. Existing stored authentication is retained. System/managed configuration still applies. Native-action JSONL events cause immediate termination and rejection; event detection cannot undo an action that already occurred. These controls are not a guarantee of complete isolation from every tool introduced by future CLI versions.
 - **Privacy and attribution.** Temporary schema and response files are removed after completion or cancellation. `--ephemeral` avoids normal rollout persistence, but Codex may maintain its own logs and state database. The subprocess inherits the host environment for existing CLI authentication. OpenAI requests carry Codex's own client identity; the plugin does not directly control the HTTP transport or claim Harness's ordinary provider-header attribution.
 - **Authentication and service limits.** Authentication, token refresh, pricing, availability, and rate limits remain owned by Codex and the selected account. No credential files are parsed or copied by the plugin. Catalog discovery is advisory; successful inference is the access check.
-- **Platform/version scope.** Tested on macOS with CLI `0.159.2` and Harness `0.2.1-alpha.4`. Other versions and Windows/Linux are unverified. Missing binaries, unavailable models, failed turns, unsupported flags, and process crashes return explicit failures. POSIX cancellation terminates the process group; Windows cancellation terminates the direct child.
+- **Platform/version scope.** Tested on macOS with CLI `0.159.2` and Harness `0.2.1-rc.2`. Other versions and Windows/Linux are unverified. Missing binaries, unavailable models, failed turns, unsupported flags, and process crashes return explicit failures. POSIX cancellation terminates the process group; Windows cancellation terminates the direct child.
 - **Trusted host integration.** The settings API sits on Harness's authenticated, same-origin `/api` carrier. The configured executable is trusted host code. This plugin is intended for personal/trusted Harness installations, not an untrusted public service or shared credential broker.
 
 ## Verification

@@ -2,11 +2,11 @@
 
 Source snapshot of the DeepSeek Harness and eight Strique plugins, with standalone browser-interface installers.
 
-The current snapshot uses Harness `0.2.1-alpha.4` and updates Branding, Codex CLI, MCP Manager, Memory, Notify, and Skills Manager for that runtime. Univer `0.3.7` and BetterSidebar `0.26.1` use the pulled upstream source snapshots. [Source revisions](setup/source-revisions.json) record the upstream commits included in this refresh.
+The current snapshot uses Harness `0.2.1-rc.2` and updates Branding, Codex CLI, MCP Manager, Memory, Notify, and Skills Manager for that runtime. Univer `0.3.7` and BetterSidebar `0.28.0` use the pulled upstream source snapshots from the local development workspace. [Source revisions](setup/source-revisions.json) record the upstream commits included in this refresh.
 
 Installer owner-state updates use atomic replacement so concurrent launch/status readers cannot observe partially written JSON.
 
-Known limitation: the pulled BetterSidebar snapshot remains pending on Harness `0.2.1-alpha.4` because it requires the removed `webRuntime` service. Host compatibility changes to that upstream snapshot remain separate work.
+This refresh passed the isolated source setup, all 14 installer lifecycle tests, and a macOS arm64 packaged browser smoke that rendered Strique branding and BetterSidebar without page errors. Platform-specific installer builds run in GitHub Actions.
 
 ## Build a Windows installer
 

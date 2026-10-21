@@ -1,6 +1,6 @@
 # DigiStrique Skills Manager
 
-Compatibility (0.4.3): Tested with Harness `0.2.1-alpha.4`, Cordis `4.0.5-alpha.2`, and Schemastery `3.18.5-alpha.2`. `engines.dsh` pins this release to the tested Harness version; other versions require separate verification.
+Compatibility (0.4.4): Tested with Harness `0.2.1-rc.2`, Cordis `4.0.5`, and Schemastery `3.18.5`. `engines.dsh` pins this release to the tested Harness version; other versions require separate verification.
 
 `dsh-skills-manager-secure@0.4.2` is an independently maintained DigiStrique Solutions
 plugin. It has its own source repository, build, tests and release lifecycle. It does
@@ -22,7 +22,7 @@ Plugin labels are English; source instructions are not automatically translated.
 
 ## Requirements
 
-- Official, unmodified **0.2.1-alpha.4** Harness packages, Cordis 4.0.5-alpha.2, React 18. No core fork, vendored implementation, or core package override is needed. Compatibility with other prereleases must be verified before upgrading.
+- Official, unmodified **0.2.1-rc.2** Harness packages, Cordis 4.0.5, React 18. No core fork, vendored implementation, or core package override is needed. Compatibility with other prereleases must be verified before upgrading.
 - Node 22.19 or newer, Git, and **Python 3** with POSIX directory descriptor support.
 - macOS is tested. Windows is not supported by the snapshot/process implementation.
 - A direct authenticated `localhost`, `127.0.0.1`, or `[::1]` connection is required

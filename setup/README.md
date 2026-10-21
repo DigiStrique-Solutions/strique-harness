@@ -8,7 +8,7 @@ One Node installer supports source and package installations on macOS, Linux,
 and native Windows. These scripts were checked on the current macOS machine;
 installation on a clean target and the Windows/Linux paths still need verification.
 
-`manifest.json` records Harness 0.2.1-alpha.4, the eight plugins active in this
+`manifest.json` records Harness 0.2.1-rc.2, the eight plugins active in this
 machine's Web profile, and their bundle order. `dsh-memory` is not included because
 it is not in that profile. Each installation uses its own Harness home.
 

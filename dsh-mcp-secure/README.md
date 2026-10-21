@@ -1,6 +1,6 @@
 # Strique DSH MCP Client
 
-Compatibility (0.9.3): Tested with Harness `0.2.1-alpha.4`, Cordis `4.0.5-alpha.2`, and Schemastery `3.18.5-alpha.2`. `engines.dsh` pins this release to the tested Harness version; other versions require separate verification.
+Compatibility (0.9.4): Tested with Harness `0.2.1-rc.2`, Cordis `4.0.5`, and Schemastery `3.18.5`. `engines.dsh` pins this release to the tested Harness version; other versions require separate verification.
 
 A security fork of `hyqhyq3/dsh-mcp-manager` 0.6.0 (commit `69d5cbc76e21606867f6dbef05025e2e2dfdbd04`). This repository is maintained by DigiStrique Solutions. The installable package remains `dsh-mcp-manager-secure`, with its own state directory, to preserve compatibility with existing installations. It is not published to npm.
 
@@ -14,7 +14,7 @@ Ask uses the Harness approval interface and its session audit log. Review the to
 
 ## Compatibility
 
-The current development branch targets DeepSeek Harness `0.2.0-rc.2`, Cordis `4.0.4`, MCP SDK `1.29.0`. Requires the Harness `tools`, `webServer`, `connection`, and `agents` services. Node's supported engine range follows Harness; the verification report records the actual platform and Node version tested. Older Harness versions without `connection.requestRejection()` cannot activate this plugin.
+The current development branch targets DeepSeek Harness `0.2.1-rc.2`, Cordis `4.0.5`, MCP SDK `1.29.0`. Requires the Harness `tools`, `webServer`, `connection`, and `agents` services. Node's supported engine range follows Harness; the verification report records the actual platform and Node version tested. Older Harness versions without `connection.requestRejection()` cannot activate this plugin.
 
 ## Install a reviewed local artifact
 

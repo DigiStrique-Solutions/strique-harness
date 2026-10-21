@@ -1,6 +1,6 @@
 {
   "name": "@local/dsh-mem",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "private": true,
   "type": "module",
   "description": "Persistent agent memory for the dsh harness: tools, standing context, self-captured lessons, and a Web UI panel",
@@ -36,6 +36,6 @@
     }
   },
   "engines": {
-    "dsh": "0.2.1-alpha.4"
+    "dsh": "0.2.1-rc.2"
   }
 }

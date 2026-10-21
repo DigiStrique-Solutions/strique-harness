@@ -1,12 +1,12 @@
 # dsh-notify
 
-Compatibility (0.1.5): Tested with Harness `0.2.1-alpha.4`, Cordis `4.0.5-alpha.2`, and Schemastery `3.18.5-alpha.2`. `engines.dsh` pins this release to the tested Harness version; other versions require separate verification.
+Compatibility (0.1.6): Tested with Harness `0.2.1-rc.2`, Cordis `4.0.5`, and Schemastery `3.18.5`. `engines.dsh` pins this release to the tested Harness version; other versions require separate verification.
 
 English browser notifications and distinct sounds for DeepSeek Harness. Maintained by DigiStrique Solutions. This fork starts from [dshiq04/dsh-notify](https://github.com/dshiq04/dsh-notify), commit `50c36dc969c7c0ef28b5b98f5fbc873669be3496`.
 
 ## Compatibility
 
-Targets Harness **0.2.1-alpha.4**, Cordis **4.0.5-alpha.2**, and Schemastery **3.18.5-alpha.2**. Older Harness releases are not supported by this fork. No Harness source patch is required.
+Targets Harness **0.2.1-rc.2**, Cordis **4.0.5**, and Schemastery **3.18.5**. Older Harness releases are not supported by this fork. No Harness source patch is required.
 
 - The Host declares the notification preferences as its `Config` schema; the Harness settings service projects them into a settings form automatically. The auto-generated page is suppressed because the plugin renders its own page.
 - The Client reads completion transitions from `ctx.sessions.list` and keyed questions, plan reviews, and approvals from `ctx.uiSession.sessionStatus` (each session's `pendingInteraction`). Preference mirroring uses `ctx.configForms`.
