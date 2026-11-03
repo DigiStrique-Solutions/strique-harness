@@ -137,23 +137,39 @@ Immutable release builds disable source/client HMR; configuration changes apply
 on restart. Existing extra plugins in the user profile can be managed with the
 bundled package manager; bundled plugin versions follow the application release.
 
-## Private GitHub source and automated builds
+## Source snapshots and automated releases
 
-`platform-release.yml` is a workflow template. Export a fresh source snapshot with
-`setup/export-source.mjs`, place that snapshot in a private distribution-build
-repository preserving its folder layout. The updated exporter also places the
-workflow at `.github/workflows/platform-release.yml`. This repository must contain the sources,
-not merely Git submodule pointers or the `setup` folder. Ensure runtime assets and
-the memory plugin's bundle patch are tracked. Do not add credentials or installed
-dependencies. This snapshot approach leaves the existing independent development
-repositories intact; refresh the snapshot when publishing a new product release.
+`platform-release.yml` is the workflow template copied to
+`.github/workflows/platform-release.yml` by `setup/export-source.mjs`. Keep both
+copies in sync. The build repository must contain the complete source snapshot,
+not merely submodule pointers or the `setup` folder. Do not add credentials or
+installed dependencies; refresh the snapshot when releasing source changes.
 
-Run the workflow manually with a new product version. Separate runners build and
-smoke Windows x64, macOS ARM64/Intel, and Ubuntu x64/ARM64. It installs and builds
-each platform's dependencies locally and retains installers/update archives as
-private build artifacts. The workflow has not been run on GitHub in this session.
-GitHub artifacts are intermediate developer outputs, not your users' download
-service. No repository was created and no code or packages were pushed or uploaded.
+Run **Build Strique installers** manually with a new `X.Y.Z` product version.
+Separate runners build and smoke Windows x64, macOS ARM64/Intel, and Ubuntu
+x64/ARM64. After all five builds succeed, the release job collects the eight
+installers/portable archives, rejects missing or empty assets, and creates
+`SHA256SUMS.txt`. It uploads everything to a draft release at the exact build
+commit, then publishes `vX.Y.Z`. Existing releases are never overwritten.
+If an upload fails, inspect and remove the incomplete draft and any tag it
+created before rerunning the release job. Never replace a published version.
+
+For this public repository, users download from
+[Strique releases](https://github.com/DigiStrique-Solutions/strique-harness/releases)
+without signing in. Expand **Assets** and choose the appropriate platform file;
+the source-code ZIP/tarball is not an installer. Releases do not expire with the
+30-day intermediate Actions artifacts. To verify downloads, place the downloaded
+files and `SHA256SUMS.txt` together and compare their SHA-256 hashes (for example,
+`sha256sum --ignore-missing -c SHA256SUMS.txt` on Linux or `shasum -a 256 FILE` on
+macOS; Windows PowerShell provides `Get-FileHash FILE -Algorithm SHA256`).
+
+A private snapshot repository's releases still require repository access. To
+support anonymous downloads, publish binaries to a public distribution repository
+or public HTTPS storage. The Windows-only workflow retains Actions artifacts;
+use the five-platform workflow for a complete public release.
+
+Release publication supplies manual installer downloads. It does not generate or
+host the signed `latest.json` feeds described below.
 
 ## Configure signed updates when hosting is available
 

@@ -12,8 +12,24 @@ on:
         type: string
 permissions:
   contents: read
+# Serialize publication for the same version; never cancel an upload in progress.
+concurrency:
+  group: strique-release-${{ inputs.version }}
+  cancel-in-progress: false
 jobs:
+  validate:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Validate product version
+        env:
+          RELEASE_VERSION: ${{ inputs.version }}
+        run: |
+          if [[ ! "$RELEASE_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo 'Product version must be X.Y.Z' >&2
+            exit 1
+          fi
   build:
+    needs: validate
     strategy:
       fail-fast: false
       matrix:
@@ -52,7 +68,7 @@ jobs:
           STRIQUE_BUILD_HOME: ${{ runner.temp }}/strique-build-home
         run: node setup/setup.mjs --mode source --home "${{ runner.temp }}/strique-build-home"
       - name: Test packaging and update verification
-        run: node --test setup/standalone/tests.mjs
+        run: node --test setup/standalone/tests.mjs setup/standalone/prepare-release.test.mjs
       - name: Build and smoke platform package
         run: node setup/standalone/ci-build.mjs
       - name: Retain installers and portable update archive
@@ -65,3 +81,60 @@ jobs:
             standalone-output/*.tar.gz
           if-no-files-found: error
           retention-days: 30
+
+  release:
+    name: Publish public installer downloads
+    needs: build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    permissions:
+      contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      RELEASE_VERSION: ${{ inputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Download all platform artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: strique-*
+          path: release-assets
+          merge-multiple: true
+      - name: Verify complete release and generate checksums
+        run: node setup/standalone/prepare-release.mjs "$RELEASE_VERSION" release-assets
+      - name: Publish installers and portable archives
+        shell: bash
+        run: |
+          set -euo pipefail
+          tag="v${RELEASE_VERSION}"
+          cat > "$RUNNER_TEMP/release-notes.md" <<EOF
+          Download the file for your operating system under **Assets**. No GitHub account is required for downloads from this public repository.
+
+          | Platform | Installer |
+          | --- | --- |
+          | Windows x64 | strique-${RELEASE_VERSION}-win32-x64.exe |
+          | macOS Apple Silicon | strique-${RELEASE_VERSION}-darwin-arm64.pkg |
+          | macOS Intel | strique-${RELEASE_VERSION}-darwin-x64.pkg |
+          | Linux x64 | strique-${RELEASE_VERSION}-linux-x64.tar.gz |
+          | Linux ARM64 | strique-${RELEASE_VERSION}-linux-arm64.tar.gz |
+
+          Portable archives for all five platforms and SHA256SUMS.txt are also attached. Each package bundles Node, Harness, and all eight configured Strique plugins.
+
+          On Linux, extract the archive and run ./install.sh. See the [installation instructions](https://github.com/${GH_REPO}/blob/${GITHUB_SHA}/setup/standalone/README.md#install-and-launch) for all platforms.
+
+          These are unsigned development installers. Signed application updates require a separately configured HTTPS feed and verification key.
+
+          Built from commit ${GITHUB_SHA}. [Build run](https://github.com/${GH_REPO}/actions/runs/${GITHUB_RUN_ID}).
+          EOF
+          # Keep partial uploads hidden. Existing releases fail instead of being overwritten.
+          gh release create "$tag" release-assets/* \
+            --target "$GITHUB_SHA" \
+            --title "Strique ${RELEASE_VERSION}" \
+            --notes-file "$RUNNER_TEMP/release-notes.md" \
+            --draft
+          gh release edit "$tag" --draft=false --latest
+          echo "Download: https://github.com/${GH_REPO}/releases/tag/${tag}" >> "$GITHUB_STEP_SUMMARY"
